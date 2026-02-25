@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, Head, router } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/Components/ui/card";
+import { Input } from "@/Components/ui/input";
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select";
+} from "@/Components/ui/select";
 import { Search, Inbox, Activity, CheckCircle2, User, MapPin, Tag, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/Components/ui/avatar";
 
 export default function Chamados({ chamados, tecnicos, localizacoes = [], stats, filters }) {
     const [search, setSearch] = useState(filters?.search || "");

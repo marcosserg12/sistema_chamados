@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { Link, Head, useForm, usePage } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/Components/ui/card";
+import { Button } from "@/Components/ui/button";
+import { Input } from "@/Components/ui/input";
+import { Textarea } from "@/Components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/Components/ui/select";
 import {
   ArrowLeft, UploadCloud, X, File as FileIcon, Send, Loader2, Info,
   Server, Monitor, HelpCircle, CheckCircle2, AlertTriangle

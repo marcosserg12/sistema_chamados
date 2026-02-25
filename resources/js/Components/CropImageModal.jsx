@@ -6,9 +6,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
+} from "@/Components/ui/dialog";
+import { Button } from "@/Components/ui/button";
+import { Slider } from "@/Components/ui/slider";
 import { Loader2, ZoomIn, ZoomOut } from "lucide-react";
 
 export default function CropImageModal({ open, onOpenChange, image, onCropComplete }) {

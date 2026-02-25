@@ -1,10 +1,10 @@
 import React from "react";
 import { Link, Head, usePage } from '@inertiajs/react';
 import AppLayout from "@/Layouts/AppLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card";
+import { Button } from "@/Components/ui/button";
+import { Badge } from "@/Components/ui/badge";
+import { Progress } from "@/Components/ui/progress";
 import {
   XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area, CartesianGrid, BarChart, Bar, Legend, LineChart, Line, LabelList
@@ -14,7 +14,7 @@ import {
   Activity, TrendingUp, ArrowRight, User, Timer, Inbox, Tag, BarChart3, Building2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/Components/ui/avatar";
 
 export default function DashboardTecnico({
   kpis, dailyTrend, mesAtualPerformance, monthlyTrend, porTipo, tarefas, disponiveis, performance

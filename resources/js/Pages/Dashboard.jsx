@@ -3,7 +3,7 @@ import { Head, usePage } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
 import KPICards from "@/components/dashboard/KPICards";
 import RecentTickets from "@/components/dashboard/RecentTickets";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card";
 import {
   BarChart,
   Bar,

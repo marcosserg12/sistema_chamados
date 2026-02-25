@@ -1,27 +1,27 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Head, router, useForm, usePage, Link } from '@inertiajs/react';
 import AppLayout from "@/Layouts/AppLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox"; // Certifique-se de ter este componente ou use o input nativo
+import { Card, CardContent } from "@/Components/ui/card";
+import { Button } from "@/Components/ui/button";
+import { Input } from "@/Components/ui/input";
+import { Label } from "@/Components/ui/label";
+import { Checkbox } from "@/Components/ui/checkbox"; // Certifique-se de ter este componente ou use o input nativo
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription
-} from "@/components/ui/dialog";
+} from "@/Components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+} from "@/Components/ui/select";
+import { Badge } from "@/Components/ui/badge";
+import { Avatar, AvatarFallback } from "@/Components/ui/avatar";
 import {
   Plus,
   Search,

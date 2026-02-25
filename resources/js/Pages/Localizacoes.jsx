@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Head, router, useForm, Link } from '@inertiajs/react';
 import AppLayout from "@/Layouts/AppLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/Components/ui/card";
+import { Button } from "@/Components/ui/button";
+import { Input } from "@/Components/ui/input";
+import { Label } from "@/Components/ui/label";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox"; // Certifique-se de ter este componente ou use o input nativo abaixo
+} from "@/Components/ui/dialog";
+import { Badge } from "@/Components/ui/badge";
+import { Checkbox } from "@/Components/ui/checkbox"; // Certifique-se de ter este componente ou use o input nativo abaixo
 import {
   Plus,
   Search,

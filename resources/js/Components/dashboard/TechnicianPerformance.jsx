@@ -1,7 +1,7 @@
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card";
+import { Avatar, AvatarFallback } from "@/Components/ui/avatar";
+import { Progress } from "@/Components/ui/progress";
 import { Users } from "lucide-react";
 
 export default function TechnicianPerformance({ tecnicos = [] }) {

@@ -1,8 +1,8 @@
 import React from "react";
 import { Link } from "@inertiajs/react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { PrioridadeBadge } from "@/components/ui/StatusBadge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card";
+import { Button } from "@/Components/ui/button";
+import { PrioridadeBadge } from "@/Components/ui/StatusBadge";
 import { Ticket, ArrowRight, Calendar, Clock, Tag } from "lucide-react";
 import { format, parseISO } from "date-fns";
 

@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { useForm, Head } from '@inertiajs/react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/Components/ui/button";
+import { Input } from "@/Components/ui/input";
+import { Label } from "@/Components/ui/label";
 import { Loader2, User, Lock, Hexagon, AlertCircle } from "lucide-react";
 
 export default function Login() {

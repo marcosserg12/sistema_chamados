@@ -1,13 +1,13 @@
 import React, { useState, useRef } from "react";
 import { router, usePage, Head, useForm } from '@inertiajs/react';
 import AppLayout from "@/Layouts/AppLayout";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarFallback } from "@/Components/ui/avatar";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/Components/ui/card";
+import { Label } from "@/Components/ui/label";
+import { Input } from "@/Components/ui/input";
+import { Switch } from "@/Components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/Components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/ui/select";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { toast } from "sonner";
 import CropImageModal from "@/Components/CropImageModal";
@@ -35,7 +35,7 @@ import {
   Settings2,
   Volume2
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/Components/ui/button";
 
 export default function Configuracoes({ empresas, localizacoes }) {
   // ... o restante do código permanece igual ...
