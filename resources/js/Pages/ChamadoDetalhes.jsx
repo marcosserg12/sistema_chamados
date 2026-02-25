@@ -561,8 +561,19 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
                         </SelectTrigger>
                         <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
                           {tecnicos.map((t) => (
-                            <SelectItem key={t.id_usuario} value={String(t.id_usuario)} className="font-semibold py-2 lg:py-3">
-                              <span className="text-xs lg:text-sm">{t.ds_nome}</span>
+                            <SelectItem key={t.id_usuario} value={String(t.id_usuario)} className="font-semibold py-2 lg:py-3 cursor-pointer">
+                              <div className="flex items-center gap-3">
+                                <Avatar className="w-6 h-6 border border-slate-200 dark:border-slate-700">
+                                  {t.ds_foto ? (
+                                    <img src={`/storage/${t.ds_foto}`} className="aspect-square h-full w-full object-cover" />
+                                  ) : (
+                                    <AvatarFallback className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold">
+                                      {getInitials(t.ds_nome)}
+                                    </AvatarFallback>
+                                  )}
+                                </Avatar>
+                                <span className="text-xs lg:text-sm">{t.ds_nome}</span>
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
