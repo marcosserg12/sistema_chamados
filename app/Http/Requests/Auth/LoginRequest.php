@@ -29,7 +29,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'ds_email' => ['required', 'string', 'email'],
+            'login' => ['required', 'string'],
             'ds_senha' => ['required', 'string'],
         ];
     }
@@ -43,15 +43,20 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
+        $login = $this->input('login');
+        
+        // Verifica se é e-mail ou usuário
+        $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'ds_email' : 'ds_usuario';
+
         if (! Auth::attempt([
-            'ds_email' => $this->input('ds_email'),
-            'password' => $this->input('ds_senha') // Laravel exige a chave 'password'
+            $field => $login,
+            'password' => $this->input('ds_senha') 
         ], $this->boolean('remember'))) {
 
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'ds_email' => 'Usuário ou senha incorretos.',
+                'login' => 'Usuário, e-mail ou senha incorretos.',
             ]);
         }
 

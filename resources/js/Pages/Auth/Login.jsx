@@ -7,7 +7,7 @@ import { Loader2, User, Lock, Hexagon, AlertCircle } from "lucide-react";
 
 export default function Login() {
     const { data, setData, post, processing, errors, reset } = useForm({
-        ds_email: '',
+        login: '',
         ds_senha: '',
         remember: false,
     });
@@ -25,7 +25,7 @@ export default function Login() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-blue-50/80 p-4 font-sans">
-            <Head title="Login - MS Soluções" />
+            <Head title="Entrar" />
 
             <div className="w-full max-w-[400px] bg-white rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-500">
 
@@ -44,34 +44,32 @@ export default function Login() {
                 <div className="px-8 py-8">
                     <form onSubmit={submit} className="space-y-5">
 
-                        {/* Campo Usuário */}
+                        {/* Campo Login (E-mail ou Usuário) */}
                         <div className="space-y-1.5">
-                            <Label htmlFor="ds_email" className={errors.ds_email ? "text-red-500" : "text-slate-600"}>
-                                Usuário
+                            <Label htmlFor="login" className={errors.login ? "text-red-500" : "text-slate-600"}>
+                                Usuário ou E-mail
                             </Label>
                             <div className="relative group">
-                                <div className={`absolute left-3 top-3 transition-colors ${errors.ds_email ? "text-red-400" : "text-slate-400 group-focus-within:text-blue-600"}`}>
+                                <div className={`absolute left-3 top-3 transition-colors ${errors.login ? "text-red-400" : "text-slate-400 group-focus-within:text-blue-600"}`}>
                                     <User className="h-5 w-5" />
                                 </div>
                                 <Input
-                                    id="ds_email"
+                                    id="login"
                                     type="text"
-                                    placeholder="Digite seu usuário"
-                                    // AQUI: Borda vermelha se tiver erro
+                                    placeholder="Digite seu usuário ou e-mail"
                                     className={`pl-10 h-11 transition-all ${
-                                        errors.ds_email
+                                        errors.login
                                         ? "border-red-300 focus:border-red-500 focus:ring-red-100 bg-red-50/30 text-red-900 placeholder:text-red-300"
                                         : "bg-white border-slate-200 focus:border-blue-500 focus:ring-blue-100"
                                     }`}
-                                    value={data.ds_email}
-                                    onChange={e => setData('ds_email', e.target.value)}
+                                    value={data.login}
+                                    onChange={e => setData('login', e.target.value)}
                                 />
                             </div>
-                            {/* Mensagem de erro bonita */}
-                            {errors.ds_email && (
+                            {errors.login && (
                                 <div className="flex items-center gap-1.5 mt-1.5 text-red-500 animate-in slide-in-from-left-1">
                                     <AlertCircle className="w-3.5 h-3.5" />
-                                    <p className="text-xs font-medium">{errors.ds_email}</p>
+                                    <p className="text-xs font-medium">{errors.login}</p>
                                 </div>
                             )}
                         </div>
