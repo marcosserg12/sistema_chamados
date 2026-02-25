@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
 import { Head, usePage } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
-import KPICards from "@/components/dashboard/KPICards";
-import RecentTickets from "@/components/dashboard/RecentTickets";
+import KPICards from "@/Components/dashboard/KPICards";
+import RecentTickets from "@/Components/dashboard/RecentTickets";
 import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card";
 import {
   BarChart,

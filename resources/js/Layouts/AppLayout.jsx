@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 // 1. IMPORTAÇÕES DO INERTIA E REACT
 import { Link, usePage, router } from "@inertiajs/react";
 import axios from "axios";
-import { ThemeProvider, useTheme } from "@/components/providers/ThemeProvider";
+import { ThemeProvider, useTheme } from "@/Components/providers/ThemeProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,

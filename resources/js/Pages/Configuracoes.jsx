@@ -8,7 +8,7 @@ import { Input } from "@/Components/ui/input";
 import { Switch } from "@/Components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/Components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/ui/select";
-import { useTheme } from "@/components/providers/ThemeProvider";
+import { useTheme } from "@/Components/providers/ThemeProvider";
 import { toast } from "sonner";
 import CropImageModal from "@/Components/CropImageModal";
 // 👇 ADICIONE ESTA IMPORTAÇÃO QUE ESTAVA FALTANDO
