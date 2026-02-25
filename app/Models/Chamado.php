@@ -84,16 +84,23 @@ class Chamado extends Model
      */
     public function scopeVisivelPara($query, $user)
     {
+        // Administradores e Técnicos (1, 4, 5)
         if (in_array($user->id_perfil, [1, 4, 5])) {
-            return $query;
+            return $query->where(function ($q) use ($user) {
+                $q->whereHas('relacionamentoUsuarios', function ($qr) use ($user) {
+                    $qr->where('id_usuario', $user->id_usuario);
+                })->orWhere('tb_chamados.st_status', 0);
+            });
         }
 
+        // Gestor (3): vê chamados das localizações que ele gerencia
         if ($user->id_perfil == 3) {
             return $query->whereHas('localizacao.usuarios', function ($q) use ($user) {
                 $q->where('tb_usuario_laravel.id_usuario', $user->id_usuario);
             });
         }
 
+        // Usuário comum (2): vê apenas o que ele mesmo abriu ou onde é parte
         return $query->where(function ($q) use ($user) {
             $q->where('tb_chamados.id_usuario', $user->id_usuario)
               ->orWhereHas('relacionamentoUsuarios', function($qr) use ($user) {

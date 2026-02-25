@@ -45,22 +45,27 @@ class DashboardController extends Controller
 
         if ($id_perfil == 1 || $id_perfil == 4 || $id_perfil == 5) {
 
-            // Gráfico de Pizza (Total Geral)
+            // Gráfico de Pizza: Agora respeita a visibilidade (Meus + Abertos)
             $graficoStatus = [
-                'abertos' => Chamado::where('st_status', 0)->count(),
-                'emAndamento' => Chamado::where('st_status', 1)->count(),
-                'resolvidos' => Chamado::where('st_status', 9)->count(),
+                'abertos' => (clone $queryUsuario)->where('st_status', 0)->count(),
+                'emAndamento' => (clone $queryUsuario)->where('st_status', 1)->count(),
+                'resolvidos' => (clone $queryUsuario)->where('st_status', 9)->count(),
             ];
 
-            // Tendência Semanal (Meus vs Total)
+            // Tendência Semanal
             for ($i = 6; $i >= 0; $i--) {
                 $data = Carbon::now()->subDays($i);
                 $dataStr = $data->format('Y-m-d');
 
+                // "Meus" aqui são APENAS os que eu aceitei/estou trabalhando (atribuídos)
+                $meusChamadosQuery = Chamado::whereHas('relacionamentoUsuarios', function ($q) use ($user) {
+                    $q->where('id_usuario', $user->id_usuario);
+                });
+
                 $trendSemanal[] = [
                     'dia' => ucfirst($data->locale('pt_BR')->shortDayName),
-                    'total' => Chamado::whereDate('dt_data_chamado', $dataStr)->count(),
-                    'meus' => (clone $queryUsuario)->whereDate('dt_data_chamado', $dataStr)->count(),
+                    'total' => Chamado::whereDate('dt_data_chamado', $dataStr)->count(), // Total de criados no sistema
+                    'meus' => $meusChamadosQuery->whereDate('dt_data_chamado', $dataStr)->count(),
                 ];
             }
         }
