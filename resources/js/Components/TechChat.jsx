@@ -27,10 +27,18 @@ export default function TechChat() {
     const [file, setFile] = useState(null);
     const [isSending, setIsSending] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [hasUnread, setHasUnread] = useState(false);
     
     const scrollRef = useRef(null);
     const pollerRef = useRef(null);
     const fileInputRef = useRef(null);
+    const audioRef = useRef(null);
+
+    // Inicializa o áudio apenas no cliente
+    useEffect(() => {
+        audioRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3");
+        audioRef.current.volume = 0.5;
+    }, []);
 
     // Permissão: Técnico (4), Admin (1) ou Super Admin (5)
     const canAccess = [1, 4, 5].includes(auth?.user?.id_perfil);
@@ -42,6 +50,15 @@ export default function TechChat() {
             const response = await axios.get("/api/tech-chat");
             // Só atualiza se o número de mensagens mudou ou se é a primeira carga
             if (response.data.length !== messages.length || isLoading) {
+                // Se houver novas mensagens e não for o carregamento inicial
+                if (!isLoading && response.data.length > messages.length) {
+                    const lastMsg = response.data[response.data.length - 1];
+                    // Se a última mensagem não for do próprio usuário
+                    if (lastMsg.id_usuario !== auth.user.id_usuario) {
+                        if (!isOpen) setHasUnread(true);
+                        audioRef.current?.play().catch(e => console.log("Erro ao tocar som:", e));
+                    }
+                }
                 setMessages(response.data);
                 setIsLoading(false);
             }
@@ -51,16 +68,20 @@ export default function TechChat() {
     };
 
     useEffect(() => {
-        if (isOpen) {
-            fetchMessages();
-            pollerRef.current = setInterval(fetchMessages, 5000);
-        } else {
-            if (pollerRef.current) clearInterval(pollerRef.current);
-        }
+        // Polling constante independente de estar aberto ou fechado para notificações
+        fetchMessages();
+        pollerRef.current = setInterval(fetchMessages, 5000);
+        
         return () => {
             if (pollerRef.current) clearInterval(pollerRef.current);
         };
-    }, [isOpen, messages.length]);
+    }, [messages.length]); // Removido isOpen daqui para manter o polling ativo
+
+    useEffect(() => {
+        if (isOpen) {
+            setHasUnread(false);
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -149,6 +170,11 @@ export default function TechChat() {
                 <div className="relative flex items-center justify-center">
                     <MessageSquare className="w-8 h-8 text-white opacity-20 absolute" />
                     <Terminal className="w-5 h-5 text-white relative z-10" />
+                    
+                    {/* Indicador de Nova Mensagem */}
+                    {hasUnread && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full border-2 border-[#0f172a] animate-pulse z-20" />
+                    )}
                 </div>
                 <div className="absolute right-full mr-3 px-3 py-1.5 bg-slate-900 dark:bg-indigo-900 text-white text-[10px] font-black uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity border border-white/10 whitespace-nowrap">
                     Canal Ops

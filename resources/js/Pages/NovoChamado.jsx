@@ -159,10 +159,29 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   // =========================================================================
   useEffect(() => {
     if (data.st_grau === "3") {
-      // Se mudar para Cadastro de Paciente e a descrição estiver vazia (ou for outro template)
-      // Preenche com o template
-      if (!data.ds_descricao || !data.ds_descricao.includes("Nome da Mãe:")) {
-        const template = `Setor*: 
+      const isGerencial = String(data.id_motivo_associado) === "49";
+
+      if (isGerencial) {
+        // Template Gerencial (ID 49)
+        if (!data.ds_descricao || !data.ds_descricao.includes("Data da NRS:")) {
+          const template = `Nome completo: 
+Data de nascimento: 
+Número do atendimento: 
+Sexo: 
+Unidade de internação: 
+Convênio: 
+Telefone para contato: 
+Data da NRS: 
+Valor da NRS: 
+Data do diagnóstico: 
+Diagnóstico nutricional: 
+Paciente em Terapia Nutricional? (Sim/Não): `;
+          setData("ds_descricao", template);
+        }
+      } else {
+        // Template Sisibranutro (ID 48 ou outros)
+        if (!data.ds_descricao || !data.ds_descricao.includes("Nome da Mãe:")) {
+          const template = `Setor*: 
 Leito*: 
 Nome Completo*: 
 Nome da Mãe: 
@@ -179,17 +198,18 @@ Especialidade*:
 Motivo da Internação: 
 Diagnósticos Secundários: 
 Comorbidades: `;
-        
-        setData("ds_descricao", template);
+          
+          setData("ds_descricao", template);
+        }
       }
     } else {
       // Se mudar para qualquer outra coisa (Melhoria, Problema, Relatório)
-      // E a descrição contiver o template de paciente, limpamos ela
-      if (data.ds_descricao && data.ds_descricao.includes("Nome da Mãe:")) {
+      // E a descrição contiver algum dos templates de paciente, limpamos ela
+      if (data.ds_descricao && (data.ds_descricao.includes("Nome da Mãe:") || data.ds_descricao.includes("Data da NRS:"))) {
         setData("ds_descricao", "");
       }
     }
-  }, [data.st_grau]);
+  }, [data.st_grau, data.id_motivo_associado]);
 
   // =========================================================================
   // GESTÃO DE ARQUIVOS MANUAIS E HELPERS
