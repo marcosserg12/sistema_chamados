@@ -107,9 +107,17 @@ class ConfiguracaoController extends Controller
         ]);
 
         $user = auth()->user();
+        
+        // Atualiza a senha
         $user->update([
             'ds_senha' => Hash::make($validated['password']),
         ]);
+
+        // Marca a flag de senha alterada nas preferências
+        $preferencias = $user->preferencias ?? [];
+        $preferencias['senha_alterada'] = true;
+        $user->preferencias = $preferencias;
+        $user->save();
 
         return redirect()->back()->with('success', 'Senha alterada com sucesso!');
     }

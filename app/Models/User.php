@@ -80,7 +80,8 @@ class User extends Authenticatable
                         "evt_chamado_atribuido" => true,
                         "evt_mudanca_status" => true,
                         "id_empresa_padrao" => null,
-                        "id_localizacao_padrao" => null
+                        "id_localizacao_padrao" => null,
+                        "senha_alterada" => false
                     ];
                 } else {
                     $user->preferencias = [
@@ -98,7 +99,8 @@ class User extends Authenticatable
                         "evt_chamado_atribuido" => false,
                         "evt_mudanca_status" => true,
                         "id_empresa_padrao" => null,
-                        "id_localizacao_padrao" => null
+                        "id_localizacao_padrao" => null,
+                        "senha_alterada" => false
                     ];
                 }
             }

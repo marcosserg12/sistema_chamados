@@ -124,6 +124,18 @@ function LayoutContent({ children }) {
 
   const { darkMode, menuCompacto, toggleDarkMode, toggleMenuCompacto } = useTheme();
 
+  // Verificação de troca de senha obrigatória no primeiro acesso
+  const [showPassModal, setShowPassModal] = useState(false);
+  
+  useEffect(() => {
+    // Se logado, não alterou a senha e não está na página de configurações
+    if (user && user.preferencias?.senha_alterada === false && url !== '/configuracoes') {
+        setShowPassModal(true);
+    } else {
+        setShowPassModal(false);
+    }
+  }, [user, url]);
+
   // "Desbloqueia" o áudio no primeiro clique do usuário (Exigência dos navegadores)
   useEffect(() => {
     // Se já desbloqueamos nesta sessão (mesmo mudando de página), não fazemos de novo
@@ -847,6 +859,40 @@ function LayoutContent({ children }) {
           </motion.div>
         </main>
       </div>
+      
+      {/* Modal de Troca de Senha Obrigatória */}
+      <Dialog open={showPassModal} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md [&>button]:hidden" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-rose-600">
+              <Shield className="w-5 h-5" />
+              Segurança da Conta
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2 text-center sm:text-left">
+            <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 p-4 rounded-r-xl">
+              <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                Detectamos que este é o seu primeiro acesso com a senha padrão.
+              </p>
+            </div>
+            <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+              Por motivos de segurança, você deve **alterar sua senha** antes de continuar utilizando o sistema.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button asChild className="bg-blue-600 hover:bg-blue-700 h-11 rounded-xl">
+              <Link href="/configuracoes">
+                <Settings className="w-4 h-4 mr-2" />
+                Ir para Configurações agora
+              </Link>
+            </Button>
+            <p className="text-[10px] text-center text-slate-400">
+              Você não terá acesso total ao sistema até concluir esta etapa.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <TechChat />
       <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto" />
     </div>

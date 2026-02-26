@@ -1,11 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, Head } from '@inertiajs/react';
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
 import { Label } from "@/Components/ui/label";
-import { Loader2, User, Lock, AlertCircle } from "lucide-react";
+import { Loader2, User, Lock, AlertCircle, Info, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 export default function Login() {
+    const [showWelcome, setShowWelcome] = useState(false);
     const { data, setData, post, processing, errors, reset } = useForm({
         login: '',
         ds_senha: '',
@@ -13,10 +15,20 @@ export default function Login() {
     });
 
     useEffect(() => {
+        const hasVisited = localStorage.getItem('ibra_welcome_seen');
+        if (!hasVisited) {
+            setShowWelcome(true);
+        }
+        
         return () => {
             reset('ds_senha');
         };
     }, []);
+
+    const closeWelcome = () => {
+        localStorage.setItem('ibra_welcome_seen', 'true');
+        setShowWelcome(false);
+    };
 
     const submit = (e) => {
         e.preventDefault();
@@ -26,6 +38,54 @@ export default function Login() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#020617] relative overflow-hidden font-sans">
             
+            {/* Modal de Boas-vindas (Apenas 1ª vez) */}
+            <AnimatePresence>
+                {showWelcome && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white rounded-[2rem] shadow-2xl max-w-lg w-full overflow-hidden relative border border-blue-100"
+                        >
+                            <button 
+                                onClick={closeWelcome}
+                                className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+
+                            <div className="p-8 md:p-10">
+                                <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
+                                    <Info className="w-8 h-8 text-blue-600" />
+                                </div>
+                                <h2 className="text-2xl font-bold text-slate-900 mb-4">Bem-vindo ao Novo Portal</h2>
+                                <p className="text-slate-600 leading-relaxed mb-6">
+                                    Estamos de cara nova! O sistema de chamados do Grupo Ibra foi totalmente renovado para melhor atender você.
+                                </p>
+                                
+                                <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-xl mb-8">
+                                    <div className="flex gap-3">
+                                        <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                                        <div className="text-sm text-amber-800 font-medium">
+                                            <p className="mb-2"><strong>Atenção:</strong> Seu login permanece o mesmo, porém a sua senha foi alterada por motivos de segurança.</p>
+                                            <p>Por favor, consulte o setor de <strong>TI</strong> ou <strong>Qualidade</strong> para obter sua nova credencial de acesso.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Button 
+                                    onClick={closeWelcome}
+                                    className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl"
+                                >
+                                    Entendi, continuar para o Login
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             {/* Ambient Background Glow */}
             <div className="absolute inset-0 z-0 pointer-events-none">
                 <div className="absolute top-[-10%] left-[-5%] w-[50vw] h-[50vw] bg-blue-600/20 rounded-full blur-[120px] mix-blend-screen animate-pulse duration-[8s]"></div>
