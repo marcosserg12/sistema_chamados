@@ -29,7 +29,9 @@ import {
   ListTree,
   Phone,
   CheckCircle2,
-  Trash2
+  Trash2,
+  HelpCircle,
+  Info
 } from "lucide-react";
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
@@ -42,6 +44,13 @@ import {
   DropdownMenuTrigger,
 } from "@/Components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/Components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/Components/ui/dialog";
 import { cn } from "@/lib/utils";
 import TechChat from "@/Components/TechChat";
 
@@ -103,7 +112,7 @@ function LayoutContent({ children }) {
   // Estados para Notificações
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  
+
   // Usamos useRef para que o valor seja sempre o mais atualizado dentro do setInterval (evita closure stale)
   const lastNotificationIdRef = useRef(localStorage.getItem("last_notif_id"));
   const audioRef = useRef(null);
@@ -125,7 +134,7 @@ function LayoutContent({ children }) {
         // Toca e pausa IMEDIATAMENTE com volume 0 para o navegador autorizar o canal de áudio
         const originalVolume = audioRef.current.volume;
         audioRef.current.volume = 0;
-        
+
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
           playPromise.then(() => {
@@ -177,7 +186,7 @@ function LayoutContent({ children }) {
       const response = await axios.get("/api/notifications");
       const newNotifications = response.data.notifications;
       const newUnreadCount = response.data.unreadCount;
-      
+
       if (newNotifications.length > 0) {
         const latestNotif = newNotifications[0];
 
@@ -190,7 +199,7 @@ function LayoutContent({ children }) {
 
         if (!initial && latestNotif.id !== lastNotificationIdRef.current && !latestNotif.read_at && isRecent) {
           playNotificationSound();
-          
+
           if (user?.preferencias?.canal_navegador !== false && Notification.permission === "granted") {
             // Título e mensagem vindos diretamente do banco de dados (Laravel Notification)
             const title = latestNotif.data.title || "Nova Notificação";
@@ -216,7 +225,7 @@ function LayoutContent({ children }) {
             };
           }
         }
-        
+
         // Atualiza a Ref e o localStorage IMEDIATAMENTE
         lastNotificationIdRef.current = latestNotif.id;
         localStorage.setItem("last_notif_id", latestNotif.id);
@@ -355,19 +364,12 @@ function LayoutContent({ children }) {
           menuCompacto ? "justify-center" : "justify-between"
         )}>
           <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
-              <Ticket className="w-5 h-5 text-white" />
-            </div>
-            {!menuCompacto && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                <span className="font-bold text-slate-900 dark:text-white text-lg">
-                  MS
-                </span>
-                <span className="font-bold text-blue-600 ml-1">Soluções</span>
-              </motion.div>
+            {!menuCompacto ? (
+              <img src="/images/grupo_ibra.png" alt="Grupo Ibra" className="h-16 w-auto object-contain dark:brightness-0 dark:invert transition-all" />
+            ) : (
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 flex-shrink-0">
+                <img src="/images/favicon.png" className="w-8 h-8 invert brightness-0" alt="Ibra" />
+              </div>
             )}
           </Link>
           {!menuCompacto && (
@@ -596,8 +598,8 @@ function LayoutContent({ children }) {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
                   placeholder={
-                    perfilId === 1 || perfilId === 5 
-                      ? "Buscar chamados, patrimônios, usuários..." 
+                    perfilId === 1 || perfilId === 5
+                      ? "Buscar chamados, patrimônios, usuários..."
                       : "Buscar chamados..."
                   }
                   className="pl-10 bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 focus:bg-white dark:focus:bg-slate-600 rounded-xl"
@@ -655,6 +657,33 @@ function LayoutContent({ children }) {
             </div>
 
             <div className="flex items-center gap-2">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon" title="Regras do Sistema" className="text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400">
+                    <HelpCircle className="w-5 h-5" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl bg-white dark:bg-slate-900 border-none shadow-2xl p-0 overflow-hidden rounded-2xl">
+                  <DialogHeader className="p-4 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white">
+                    <DialogTitle className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-md flex items-center justify-center">
+                        <Info className="w-4 h-4 text-white" />
+                      </div>
+                      Regras e Orientações
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="p-2 bg-slate-50 dark:bg-slate-950/50">
+                    <div className="rounded-xl overflow-hidden shadow-xl bg-white dark:bg-slate-900">
+                      <img
+                        src="/images/regra_chamados.jpg"
+                        alt="Regras de Atendimento"
+                        className="w-full h-auto object-contain max-h-[85vh]"
+                      />
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
@@ -670,7 +699,7 @@ function LayoutContent({ children }) {
                   <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
                     <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Notificações</h3>
                     {unreadCount > 0 && (
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.preventDefault();
                           markAllAsRead();
@@ -745,8 +774,8 @@ function LayoutContent({ children }) {
                     )}
                   </div>
                   <div className="p-3 border-t border-slate-100 dark:border-slate-700 text-center bg-slate-50/50 dark:bg-slate-800/50">
-                    <Link 
-                      href="/notificacoes" 
+                    <Link
+                      href="/notificacoes"
                       className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                     >
                       Ver todas notificações
