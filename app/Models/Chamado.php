@@ -117,11 +117,9 @@ class Chamado extends Model
             });
         });
 
-        $query->when($filters['status'] ?? null, function ($q, $status) {
-            if ($status !== 'todos') {
-                $q->where('tb_chamados.st_status', $status);
-            }
-        });
+        if (isset($filters['status']) && $filters['status'] !== 'todos') {
+            $query->where('tb_chamados.st_status', $filters['status']);
+        }
 
         $query->when($filters['tecnico'] ?? null, function ($q, $tecnico) {
             if ($tecnico !== 'todos') {
