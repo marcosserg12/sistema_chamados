@@ -39,14 +39,14 @@ class ChamadoController extends Controller
         $filters = $request->only(['search', 'status', 'tecnico', 'localizacao']);
 
         // 1. Dados para os Selects
-        $tecnicos = Usuario::where('id_perfil', 4)
+        $tecnicos = Usuario::whereIn('id_perfil', [1, 4, 5])
             ->where('st_ativo', 'A')
             ->select('id_usuario', 'ds_nome')
             ->orderBy('ds_nome')
             ->get();
 
         $localizacoes = \App\Models\Localizacao::query()
-            ->when($user->id_perfil != 5, function($q) use ($user) {
+            ->when(!in_array($user->id_perfil, [1, 4, 5]), function($q) use ($user) {
                 $q->whereHas('usuarios', fn($sq) => $sq->where('tb_usuario_laravel.id_usuario', $user->id_usuario));
             })
             ->orderBy('ds_localizacao')
@@ -77,8 +77,9 @@ class ChamadoController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // 3. Estatísticas (Reaproveitando a lógica de visibilidade e filtros)
-        $statsBase = Chamado::visivelPara($user)->filtrar($filters);
+        // 3. Estatísticas (Reaproveitando a lógica de visibilidade e filtros, exceto status)
+        $filtersStats = array_merge($filters, ['status' => 'todos']);
+        $statsBase = Chamado::visivelPara($user)->filtrar($filtersStats);
         
         $stats = [
             'abertos' => (clone $statsBase)->where('st_status', 0)->count(),
@@ -185,7 +186,7 @@ class ChamadoController extends Controller
             'chamado' => $chamadoFormatted,
             'historico' => $historico,
             'chat' => $chat,
-            'tecnicos' => Usuario::where('id_perfil', 4)->where('st_ativo', 'A')->select('id_usuario', 'ds_nome', 'ds_foto')->get(),
+            'tecnicos' => Usuario::whereIn('id_perfil', [1, 4, 5])->where('st_ativo', 'A')->select('id_usuario', 'ds_nome', 'ds_foto')->get(),
             'empresas' => DB::table('tb_empresa as e')
                 ->join('rl_usuario_empresa_localizacao as rl', 'e.id_empresa', '=', 'rl.id_empresa')
                 ->where('rl.id_usuario', $id_usuario_logado)

@@ -84,13 +84,9 @@ class Chamado extends Model
      */
     public function scopeVisivelPara($query, $user)
     {
-        // Administradores e Técnicos (1, 4, 5)
+        // Administradores e Técnicos (1, 4, 5) - Vêem TUDO
         if (in_array($user->id_perfil, [1, 4, 5])) {
-            return $query->where(function ($q) use ($user) {
-                $q->whereHas('relacionamentoUsuarios', function ($qr) use ($user) {
-                    $qr->where('id_usuario', $user->id_usuario);
-                })->orWhere('tb_chamados.st_status', 0);
-            });
+            return $query;
         }
 
         // Gestor (3): vê chamados das localizações que ele gerencia
