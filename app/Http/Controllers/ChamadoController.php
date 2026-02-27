@@ -186,7 +186,7 @@ class ChamadoController extends Controller
             'chamado' => $chamadoFormatted,
             'historico' => $historico,
             'chat' => $chat,
-            'tecnicos' => Usuario::whereIn('id_perfil', [1, 4, 5])->where('st_ativo', 'A')->select('id_usuario', 'ds_nome', 'ds_foto')->get(),
+            'tecnicos' => Usuario::where('id_perfil', 4)->where('st_ativo', 'A')->select('id_usuario', 'ds_nome', 'ds_foto')->get(),
             'empresas' => DB::table('tb_empresa as e')
                 ->join('rl_usuario_empresa_localizacao as rl', 'e.id_empresa', '=', 'rl.id_empresa')
                 ->where('rl.id_usuario', $id_usuario_logado)
