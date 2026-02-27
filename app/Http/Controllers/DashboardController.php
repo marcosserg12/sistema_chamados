@@ -18,7 +18,7 @@ class DashboardController extends Controller
         // =======================================================
         // 1. QUERY ESPECÍFICA DO USUÁRIO (Eloquent + Scopes)
         // =======================================================
-        $queryUsuario = Chamado::visivelPara($user)
+        $queryUsuario = Chamado::visivelNoDashboard($user)
             ->with(['solicitante', 'tecnico', 'motivoAssociado']);
 
         // KPIs do Usuário usando agregação
@@ -64,7 +64,7 @@ class DashboardController extends Controller
 
                 $trendSemanal[] = [
                     'dia' => ucfirst($data->locale('pt_BR')->shortDayName),
-                    'total' => Chamado::whereDate('dt_data_chamado', $dataStr)->count(), // Total de criados no sistema
+                    'total' => Chamado::visivelNoDashboard($user)->whereDate('dt_data_chamado', $dataStr)->count(), 
                     'meus' => $meusChamadosQuery->whereDate('dt_data_chamado', $dataStr)->count(),
                 ];
             }

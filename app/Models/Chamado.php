@@ -80,7 +80,40 @@ class Chamado extends Model
     }
 
     /**
-     * Scope para aplicar as regras de visibilidade baseadas no perfil
+     * Scope para o Dashboard: Regra restrita de visibilidade (Meus + Abertos para técnicos)
+     */
+    public function scopeVisivelNoDashboard($query, $user)
+    {
+        $id_perfil = $user->id_perfil;
+        $id_usuario = $user->id_usuario;
+
+        // Super Admin (5): Vê tudo
+        if ($id_perfil == 5) {
+            return $query;
+        }
+
+        // Administrador (1) ou Técnico (4): Vê atribuídos a ele OU status Aberto (0)
+        if ($id_perfil == 1 || $id_perfil == 4) {
+            return $query->where(function ($q) use ($id_usuario) {
+                $q->whereHas('relacionamentoUsuarios', function ($qr) use ($id_usuario) {
+                    $qr->where('id_usuario', $id_usuario);
+                })->orWhere('tb_chamados.st_status', 0);
+            });
+        }
+
+        // Gestor (3): vê chamados das localizações que ele gerencia
+        if ($id_perfil == 3) {
+            return $query->whereHas('localizacao.usuarios', function ($q) use ($id_usuario) {
+                $q->where('tb_usuario_laravel.id_usuario', $id_usuario);
+            });
+        }
+
+        // Usuário comum (2): vê apenas o que ele mesmo abriu
+        return $query->where('tb_chamados.id_usuario', $id_usuario);
+    }
+
+    /**
+     * Scope para aplicar as regras de visibilidade baseadas no perfil (Geral/Listagem)
      */
     public function scopeVisivelPara($query, $user)
     {
