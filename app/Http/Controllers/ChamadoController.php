@@ -39,7 +39,7 @@ class ChamadoController extends Controller
         $filters = $request->only(['search', 'status', 'tecnico', 'localizacao']);
 
         // 1. Dados para os Selects
-        $tecnicos = Usuario::whereIn('id_perfil', [1, 4, 5])
+        $tecnicos = Usuario::where('id_perfil', 4)
             ->where('st_ativo', 'A')
             ->select('id_usuario', 'ds_nome')
             ->orderBy('ds_nome')
