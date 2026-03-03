@@ -95,6 +95,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/patrimonios', [PatrimonioController::class, 'store'])->name('patrimonios.store');
     Route::put('/patrimonios/{id}', [PatrimonioController::class, 'update'])->name('patrimonios.update');
 
+    Route::get('/api/test-notification', function () {
+        $user = auth()->user();
+        $chamado = \App\Models\Chamado::first();
+        if ($chamado) {
+            $user->notify(new \App\Notifications\ChamadoCriado($chamado));
+            return "Notificação enviada para " . $user->ds_nome;
+        }
+        return "Nenhum chamado encontrado para o teste.";
+    });
+
     Route::prefix('configuracao')->group(function () {
         Route::get('/motivos', [ConfiguracaoChamadoController::class, 'index'])->name('config.motivos');
         Route::post('/tipos', [ConfiguracaoChamadoController::class, 'storeTipo']);

@@ -192,15 +192,24 @@ function LayoutContent({ children }) {
     fetchNotifications(true); // true = primeira carga
 
     if (user && window.Echo) {
-      const channelName = `App.Models.Usuario.${user.id_usuario}`;
+      // Usamos App.Models.User para ser compatível com o broadcast padrão do Laravel Notification
+      const channelName = `App.Models.User.${user.id_usuario}`;
       const channel = window.Echo.private(channelName);
 
       channel.notification((notification) => {
         fetchNotifications(false);
       });
 
+      // Fallback para caso algum broadcast antigo use Usuario
+      const legacyChannelName = `App.Models.Usuario.${user.id_usuario}`;
+      const legacyChannel = window.Echo.private(legacyChannelName);
+      legacyChannel.notification((notification) => {
+        fetchNotifications(false);
+      });
+
       return () => {
         window.Echo.leave(channelName);
+        window.Echo.leave(legacyChannelName);
       };
     }
   }, [user]);

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, usePage } from "@inertiajs/react";
 import axios from "axios";
-import { 
-    MessageSquare, 
-    X, 
-    Send, 
-    Loader2, 
-    Terminal, 
+import {
+    MessageSquare,
+    X,
+    Send,
+    Loader2,
+    Terminal,
     Hash,
     AtSign,
     Paperclip,
@@ -28,7 +28,7 @@ export default function TechChat() {
     const [isSending, setIsSending] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [hasUnread, setHasUnread] = useState(false);
-    
+
     const scrollRef = useRef(null);
     const pollerRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -41,7 +41,7 @@ export default function TechChat() {
     }, []);
 
     // Permissão: Técnico (4), Admin (1) ou Super Admin (5)
-    const canAccess = [1, 4, 5].includes(auth?.user?.id_perfil);
+    const canAccess = [4].includes(auth?.user?.id_perfil);
 
     if (!canAccess) return null;
 
@@ -70,25 +70,25 @@ export default function TechChat() {
     useEffect(() => {
         // Carrega inicial
         fetchMessages();
-        
+
         // Inscreve no canal de websockets para atualizações em tempo real
         if (window.Echo) {
             const channel = window.Echo.private('tech-chat');
-            
+
             channel.listen('.NewTechChatMessage', (e) => {
                 const newMsg = e.message;
                 setMessages(prev => {
                     // Remove a mensagem otimista e substitui pela real (do server)
                     const filtered = prev.filter(m => !(m.isOptimistic && m.ds_mensagem === newMsg.ds_mensagem && m.id_usuario === newMsg.id_usuario));
-                    
+
                     if (filtered.some(m => m.id === newMsg.id)) return filtered;
-                    
+
                     // Se a mensagem não é minha, tocar som e notificar
                     if (newMsg.id_usuario !== auth.user.id_usuario) {
                         setHasUnread(true); // O hook [isOpen] abaixo limpa se já estiver aberto
                         audioRef.current?.play().catch(e => console.log("Erro ao tocar som:", e));
                     }
-                    
+
                     return [...filtered, newMsg];
                 });
             });
@@ -137,11 +137,11 @@ export default function TechChat() {
             ds_caminho_arquivo: isFile ? "pending" : null,
             dt_envio: new Date().toISOString(),
             usuario: auth.user,
-            isOptimistic: true 
+            isOptimistic: true
         };
 
         setMessages(prev => [...prev, optimisticMessage]);
-        
+
         // Envio P2P Whisper se não for arquivo
         if (window.Echo && !isFile && newMessage) {
             window.Echo.private('tech-chat').whisper('new-message', optimisticMessage);
@@ -163,7 +163,7 @@ export default function TechChat() {
             const response = await axios.post("/api/tech-chat", formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            
+
             setMessages(prev => {
                 const filtered = prev.filter(m => !(m.isOptimistic && m.id === optimisticMessage.id));
                 if (filtered.some(m => m.id === response.data.message.id)) return filtered;
@@ -236,7 +236,7 @@ export default function TechChat() {
                 <div className="relative flex items-center justify-center">
                     <MessageSquare className="w-8 h-8 text-white opacity-20 absolute" />
                     <Terminal className="w-5 h-5 text-white relative z-10" />
-                    
+
                     {/* Indicador de Nova Mensagem */}
                     {hasUnread && (
                         <div className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full border-2 border-[#0f172a] animate-pulse z-20" />
@@ -351,31 +351,31 @@ export default function TechChat() {
                                         </div>
                                     )}
                                     <div className="relative flex items-center gap-2">
-                                        <input 
-                                            type="file" 
-                                            ref={fileInputRef} 
-                                            className="hidden" 
-                                            onChange={(e) => setFile(e.target.files[0])} 
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            className="hidden"
+                                            onChange={(e) => setFile(e.target.files[0])}
                                         />
-                                        <button 
-                                            type="button" 
-                                            onClick={() => fileInputRef.current.click()} 
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current.click()}
                                             className="w-10 h-10 shrink-0 bg-slate-900 border border-white/10 rounded-xl flex items-center justify-center text-slate-500 hover:text-indigo-400 transition-all active:scale-95"
                                             title="Anexar arquivo"
                                         >
                                             <Paperclip className="w-5 h-5" />
                                         </button>
                                         <div className="relative flex-1">
-                                            <input 
+                                            <input
                                                 type="text"
                                                 placeholder="Mensagem para equipe..."
                                                 value={newMessage}
                                                 onChange={(e) => setNewMessage(e.target.value)}
                                                 className="w-full bg-slate-900 border border-white/10 rounded-xl py-2.5 pl-4 pr-10 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all placeholder:text-slate-600 font-medium"
                                             />
-                                            <button 
-                                                type="submit" 
-                                                disabled={(!newMessage.trim() && !file) || isSending} 
+                                            <button
+                                                type="submit"
+                                                disabled={(!newMessage.trim() && !file) || isSending}
                                                 className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-500 hover:text-indigo-400 disabled:opacity-30 p-1 active:scale-95"
                                             >
                                                 {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

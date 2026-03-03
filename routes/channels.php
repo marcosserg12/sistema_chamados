@@ -6,6 +6,10 @@ Broadcast::channel('App.Models.Usuario.{id}', function ($user, $id) {
     return (int) $user->id_usuario === (int) $id;
 });
 
+Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
+    return (int) $user->id_usuario === (int) $id;
+});
+
 // Canal privado para os técnicos
 Broadcast::channel('tech-chat', function ($user) {
     // Perfis 1 (Admin), 4 (Técnico), 5 (Superadmin)
