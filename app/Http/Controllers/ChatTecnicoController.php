@@ -60,9 +60,12 @@ class ChatTecnicoController extends Controller
             'dt_envio' => now()
         ]);
 
+        $chatWithUser = $chat->load('usuario:id_usuario,ds_nome,ds_foto');
+        \App\Events\NewTechChatMessage::dispatch($chatWithUser);
+
         return response()->json([
             'success' => true,
-            'message' => $chat->load('usuario:id_usuario,ds_nome,ds_foto')
+            'message' => $chatWithUser
         ]);
     }
 

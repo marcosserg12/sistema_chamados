@@ -195,6 +195,39 @@ class ChamadoController extends Controller
         ]);
     }
 
+    public function getModalDetails($id)
+    {
+        $chamado = Chamado::with([
+            'solicitante', 'tecnico', 'empresa', 'localizacao', 
+            'tipoChamado', 'motivoPrincipal', 'motivoAssociado', 'anexos'
+        ])->findOrFail($id);
+
+        $comentarios = \App\Models\KanbanObservacao::with('usuario:id_usuario,ds_nome,ds_foto')
+            ->where('id_chamado', $id)
+            ->orderBy('dt_criacao', 'desc')
+            ->get();
+
+        $checklist = \App\Models\ChamadoChecklist::where('id_chamado', $id)
+            ->orderBy('dt_criacao', 'asc')
+            ->get();
+
+        return response()->json([
+            'chamado' => $chamado,
+            'comentarios' => $comentarios,
+            'checklist' => $checklist
+        ]);
+    }
+
+    public function updatePrevisao(Request $request, $id)
+    {
+        $request->validate(['dt_previsao_termino' => 'nullable|date']);
+        $chamado = Chamado::findOrFail($id);
+        $chamado->dt_previsao_termino = $request->dt_previsao_termino;
+        $chamado->save();
+
+        return response()->json(['success' => true]);
+    }
+
     /**
      * Atualizar Chamado (Delegando para o Service)
      */
@@ -343,6 +376,10 @@ class ChamadoController extends Controller
             'dt_envio' => now()
         ]);
 
+        // Carrega o usuário para enviar o objeto completo pelo socket
+        $chatWithUser = $chatMessage->load('usuario:id_usuario,ds_nome,ds_foto');
+        \App\Events\NewChamadoChatMessage::dispatch($chatWithUser, $id);
+
         // Notifica a outra parte (Dono ou Técnico)
         $textoMensagem = $request->mensagem ?: ( $request->hasFile('arquivo') ? "Enviou um arquivo" : "" );
         $notification = new \App\Notifications\NovoChat($chamado, $user, $textoMensagem);
@@ -377,6 +414,25 @@ class ChamadoController extends Controller
         }
 
         return redirect()->back();
+    }
+
+    public function reordenarFila(Request $request)
+    {
+        $request->validate([
+            'chamados' => 'required|array',
+            'chamados.*' => 'integer'
+        ]);
+
+        $user = auth()->user();
+
+        // The array comes in the desired order
+        foreach ($request->chamados as $index => $id_chamado) {
+            RelacaoChamadoUsuario::where('id_chamado', $id_chamado)
+                ->where('id_usuario', $user->id_usuario)
+                ->update(['ordem_fila' => $index]);
+        }
+
+        return response()->json(['success' => true]);
     }
 
     public function getChatMessages($id)

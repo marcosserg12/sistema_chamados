@@ -12,6 +12,9 @@ use App\Http\Controllers\PatrimonioController;
 use App\Http\Controllers\DashboardAdminController;
 use App\Http\Controllers\ConfiguracaoChamadoController;
 use App\Http\Controllers\ConfiguracaoController;
+use App\Http\Controllers\ChamadoChecklistController;
+use App\Http\Controllers\KanbanController;
+use App\Http\Controllers\KanbanObservacaoController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -59,8 +62,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/chamados/{id}', [ChamadoController::class, 'update'])->name('chamados.update');
     Route::post('/chamados/{id}/historico', [ChamadoController::class, 'storeComment'])->name('chamados.comment');
     Route::post('/chamados/{id}/chat', [ChamadoController::class, 'storeChatMessage'])->name('chamados.chat');
+    Route::post('/chamados/{id}/chat', [ChamadoController::class, 'storeChatMessage'])->name('chamados.chat');
     Route::get('/api/chamados/{id}/chat', [ChamadoController::class, 'getChatMessages'])->name('api.chamados.chat');
     Route::post('/api/chamados/{id}/chat/read', [ChamadoController::class, 'markChatAsRead'])->name('api.chamados.chat.read');
+    Route::post('/chamados/reordenar-fila', [ChamadoController::class, 'reordenarFila'])->name('chamados.reordenar');
+
+    Route::get('/board', [KanbanController::class, 'index'])->name('kanban.index');
+    Route::put('/api/kanban/move', [KanbanController::class, 'move'])->name('api.kanban.move');
+    Route::get('/api/kanban/chamado/{id}', [ChamadoController::class, 'getModalDetails']);
+    Route::post('/api/kanban/chamado/{id}/previsao', [ChamadoController::class, 'updatePrevisao']);
+    Route::get('/api/kanban/chamado/{id}/checklist', [ChamadoChecklistController::class, 'index']);
+    Route::post('/api/kanban/chamado/{id}/checklist', [ChamadoChecklistController::class, 'store']);
+    Route::post('/api/kanban/checklist/{id}/toggle', [ChamadoChecklistController::class, 'toggle']);
+    Route::delete('/api/kanban/checklist/{id}', [ChamadoChecklistController::class, 'destroy']);
+    Route::post('/api/kanban/chamado/{id}/comentario', [KanbanObservacaoController::class, 'store']);
 
     Route::get('/empresas', [EmpresaController::class, 'index'])->name('empresas.index');
     Route::post('/empresas', [EmpresaController::class, 'store'])->name('empresas.store');

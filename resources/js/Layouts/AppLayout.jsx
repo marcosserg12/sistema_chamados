@@ -31,7 +31,8 @@ import {
   CheckCircle2,
   Trash2,
   HelpCircle,
-  Info
+  Info,
+  Kanban
 } from "lucide-react";
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
@@ -70,6 +71,7 @@ const getNavigationGroups = (perfilId) => {
       items: [
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, show: true }, // Todos veem
         { name: "Chamados", href: "/chamados", icon: Ticket, show: true }, // Todos veem
+        { name: "Quadro Tarefas", href: "/board", icon: Kanban, show: isAdmin || isTecnico || isSuperAdmin }, // Tecnicos e admins
       ]
     },
     {
@@ -126,7 +128,7 @@ function LayoutContent({ children }) {
 
   // Verificação de troca de senha obrigatória no primeiro acesso
   const [showPassModal, setShowPassModal] = useState(false);
-  
+
   useEffect(() => {
     // Se logado, não alterou a senha e não está na página de configurações
     if (user && user.preferencias?.senha_alterada === false && url !== '/configuracoes') {
@@ -185,13 +187,23 @@ function LayoutContent({ children }) {
     }
   }, []);
 
-  // Efeito para carregar notificações iniciais
+  // Efeito para carregar notificações iniciais e ouvir WebSockets
   useEffect(() => {
     fetchNotifications(true); // true = primeira carga
-    // Polling a cada 60 segundos
-    const interval = setInterval(() => fetchNotifications(false), 60000);
-    return () => clearInterval(interval);
-  }, []);
+
+    if (user && window.Echo) {
+      const channelName = `App.Models.Usuario.${user.id_usuario}`;
+      const channel = window.Echo.private(channelName);
+
+      channel.notification((notification) => {
+        fetchNotifications(false);
+      });
+
+      return () => {
+        window.Echo.leave(channelName);
+      };
+    }
+  }, [user]);
 
   const fetchNotifications = async (initial = false) => {
     try {
@@ -859,7 +871,7 @@ function LayoutContent({ children }) {
           </motion.div>
         </main>
       </div>
-      
+
       {/* Modal de Troca de Senha Obrigatória */}
       <Dialog open={showPassModal} onOpenChange={() => {}}>
         <DialogContent className="sm:max-w-md [&>button]:hidden" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>

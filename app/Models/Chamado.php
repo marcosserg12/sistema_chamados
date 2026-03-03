@@ -181,6 +181,11 @@ class Chamado extends Model
         return $this->hasMany(ChatChamado::class, 'id_chamado', 'id_chamado');
     }
 
+    public function checklists(): HasMany
+    {
+        return $this->hasMany(ChamadoChecklist::class, 'id_chamado', 'id_chamado');
+    }
+
     // Aliases para compatibilidade com códigos legados
     public function usuarioSolicitante() { return $this->solicitante(); }
     public function tecnicoResponsavel() { return $this->tecnico(); }

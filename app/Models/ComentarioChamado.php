@@ -9,7 +9,7 @@ class ComentarioChamado extends Model
     protected $table = 'tb_comentario_chamado';
 
     // Se a sua tabela tiver uma Primary Key diferente, ajuste aqui (ex: 'id_comentario')
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'id_comentario_chamado';
 
     public $timestamps = false; // O seu banco usa dt_comentario manualmente
 

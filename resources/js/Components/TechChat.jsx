@@ -68,14 +68,49 @@ export default function TechChat() {
     };
 
     useEffect(() => {
-        // Polling constante independente de estar aberto ou fechado para notificações
+        // Carrega inicial
         fetchMessages();
-        pollerRef.current = setInterval(fetchMessages, 5000);
         
-        return () => {
-            if (pollerRef.current) clearInterval(pollerRef.current);
-        };
-    }, [messages.length]); // Removido isOpen daqui para manter o polling ativo
+        // Inscreve no canal de websockets para atualizações em tempo real
+        if (window.Echo) {
+            const channel = window.Echo.private('tech-chat');
+            
+            channel.listen('.NewTechChatMessage', (e) => {
+                const newMsg = e.message;
+                setMessages(prev => {
+                    // Remove a mensagem otimista e substitui pela real (do server)
+                    const filtered = prev.filter(m => !(m.isOptimistic && m.ds_mensagem === newMsg.ds_mensagem && m.id_usuario === newMsg.id_usuario));
+                    
+                    if (filtered.some(m => m.id === newMsg.id)) return filtered;
+                    
+                    // Se a mensagem não é minha, tocar som e notificar
+                    if (newMsg.id_usuario !== auth.user.id_usuario) {
+                        setHasUnread(true); // O hook [isOpen] abaixo limpa se já estiver aberto
+                        audioRef.current?.play().catch(e => console.log("Erro ao tocar som:", e));
+                    }
+                    
+                    return [...filtered, newMsg];
+                });
+            });
+
+            // Ouve as mensagens via Whisper para velocidade instantânea
+            channel.listenForWhisper('new-message', (newMsg) => {
+                setMessages(prev => {
+                    if (prev.some(m => m.id === newMsg.id || (m.isOptimistic && m.ds_mensagem === newMsg.ds_mensagem))) return prev;
+                    if (newMsg.id_usuario !== auth.user.id_usuario) {
+                        setHasUnread(true);
+                        audioRef.current?.play().catch(e => console.log("Erro ao tocar som:", e));
+                    }
+                    return [...prev, newMsg];
+                });
+            });
+
+            return () => {
+                channel.stopListening('.NewTechChatMessage');
+                window.Echo.leave('tech-chat');
+            };
+        }
+    }, []);
 
     useEffect(() => {
         if (isOpen) {
@@ -93,20 +128,51 @@ export default function TechChat() {
         e.preventDefault();
         if ((!newMessage.trim() && !file) || isSending) return;
 
+        // Atualização Otimista
+        const isFile = !!file;
+        const optimisticMessage = {
+            id: `opt_${Date.now()}`,
+            id_usuario: auth.user.id_usuario,
+            ds_mensagem: newMessage,
+            ds_caminho_arquivo: isFile ? "pending" : null,
+            dt_envio: new Date().toISOString(),
+            usuario: auth.user,
+            isOptimistic: true 
+        };
+
+        setMessages(prev => [...prev, optimisticMessage]);
+        
+        // Envio P2P Whisper se não for arquivo
+        if (window.Echo && !isFile && newMessage) {
+            window.Echo.private('tech-chat').whisper('new-message', optimisticMessage);
+        }
+
         setIsSending(true);
+        const currentNewMessage = newMessage;
+        const currentFile = file;
+
+        // Limpa o input imediatamente
+        setNewMessage("");
+        setFile(null);
+
         const formData = new FormData();
-        formData.append('mensagem', newMessage || "");
-        if (file) formData.append('arquivo', file);
+        formData.append('mensagem', currentNewMessage || "");
+        if (currentFile) formData.append('arquivo', currentFile);
 
         try {
             const response = await axios.post("/api/tech-chat", formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            setMessages([...messages, response.data.message]);
-            setNewMessage("");
-            setFile(null);
+            
+            setMessages(prev => {
+                const filtered = prev.filter(m => !(m.isOptimistic && m.id === optimisticMessage.id));
+                if (filtered.some(m => m.id === response.data.message.id)) return filtered;
+                return [...filtered, response.data.message];
+            });
         } catch (error) {
             console.error("Erro ao enviar mensagem:", error);
+            // Reverter msg otimista
+            setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
         } finally {
             setIsSending(false);
         }
@@ -116,7 +182,7 @@ export default function TechChat() {
 
     const renderMessageContent = (msg) => {
         const text = msg.ds_mensagem;
-        const fileUrl = msg.ds_caminho_arquivo ? `/storage/${msg.ds_caminho_arquivo}` : null;
+        const fileUrl = msg.ds_caminho_arquivo === "pending" ? "#" : (msg.ds_caminho_arquivo ? `/storage/${msg.ds_caminho_arquivo}` : null);
 
         let content = [];
         if (text) {
@@ -137,12 +203,12 @@ export default function TechChat() {
             <div className="space-y-3">
                 {text && <div className="break-words">{content}</div>}
                 {fileUrl && (
-                    isImage(msg.ds_caminho_arquivo) ? (
-                        <a href={fileUrl} target="_blank" rel="noreferrer" className="block rounded-lg overflow-hidden border border-white/10 hover:opacity-80 transition-opacity">
-                            <img src={fileUrl} alt="Anexo" className="max-w-full h-auto max-h-48 object-cover" />
+                    isImage(msg.ds_caminho_arquivo) || msg.ds_caminho_arquivo === "pending" ? (
+                        <a href={fileUrl} target={msg.ds_caminho_arquivo === "pending" ? "_self" : "_blank"} rel="noreferrer" className={cn("block rounded-lg overflow-hidden border border-white/10 hover:opacity-80 transition-opacity", msg.ds_caminho_arquivo === "pending" && "opacity-50 blur-[2px]")}>
+                            <img src={msg.ds_caminho_arquivo === "pending" ? "/images/favicon.png" : fileUrl} alt="Anexo" className="max-w-full h-auto max-h-48 object-cover" />
                         </a>
                     ) : (
-                        <a href={fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-2 bg-slate-800 rounded-lg border border-white/5 hover:bg-slate-700 transition-colors group/file">
+                        <a href={fileUrl} target={msg.ds_caminho_arquivo === "pending" ? "_self" : "_blank"} rel="noreferrer" className={cn("flex items-center gap-2 p-2 bg-slate-800 rounded-lg border border-white/5 hover:bg-slate-700 transition-colors group/file", msg.ds_caminho_arquivo === "pending" && "opacity-50")}>
                             <div className="w-8 h-8 rounded bg-indigo-500/20 flex items-center justify-center shrink-0">
                                 <FileIcon className="w-4 h-4 text-indigo-400" />
                             </div>

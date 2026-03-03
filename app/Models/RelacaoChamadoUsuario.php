@@ -10,7 +10,7 @@ class RelacaoChamadoUsuario extends Model
     public $timestamps = false;
 
     // Liberar as colunas para o Laravel gravar
-    protected $fillable = ['id_chamado', 'id_usuario', 'dt_aceito'];
+    protected $fillable = ['id_chamado', 'id_usuario', 'dt_aceito', 'ordem_fila'];
 
     public function usuario()
     {

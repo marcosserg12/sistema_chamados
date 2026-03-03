@@ -3,6 +3,7 @@ import { Head, usePage } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
 import KPICards from "@/Components/dashboard/KPICards";
 import RecentTickets from "@/Components/dashboard/RecentTickets";
+import MinhaFila from "@/Components/dashboard/MinhaFila";
 import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card";
 import {
   BarChart,
@@ -88,6 +89,7 @@ const CustomLegend = ({ payload }) => {
 export default function Dashboard({
   kpis,
   chamadosRecentes = [],
+  minhaFila = [],
   graficoStatus,
   trendSemanal = [],
 }) {
@@ -95,6 +97,7 @@ export default function Dashboard({
   const id_perfil = auth.user.id_perfil;
 
   const showCharts = id_perfil === 1 || id_perfil === 4 || id_perfil === 5;
+  const showMinhaFila = id_perfil === 1 || id_perfil === 4 || id_perfil === 5;
 
   const statusDistribution = useMemo(() => {
     if (!graficoStatus) return [];
@@ -140,9 +143,16 @@ export default function Dashboard({
       {/* BLOCO 1: KPIs do Usuário */}
       <KPICards data={kpis} />
 
-      {/* BLOCO 2: Lista de Recentes */}
-      <div className="w-full">
-        <RecentTickets chamados={chamadosRecentes} />
+      {/* BLOCO 2: Filas e Recentes */}
+      <div className="flex flex-col gap-6 w-full">
+        {showMinhaFila && (
+            <div className="w-full">
+                <MinhaFila chamadosFila={minhaFila} />
+            </div>
+        )}
+        <div className="w-full">
+          <RecentTickets chamados={chamadosRecentes} />
+        </div>
       </div>
 
       {/* BLOCO 3: Gráficos Globais */}

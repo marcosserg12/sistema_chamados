@@ -90,39 +90,59 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
 
   // Efeito para polling do chat
   React.useEffect(() => {
-    let interval;
     if (isChatOpen) {
       // Marca como lido ao abrir
       markChatAsRead();
-
-      // Busca novas mensagens a cada 5 segundos se o chat estiver aberto
-      interval = setInterval(async () => {
-        try {
-          const response = await axios.get(`/api/chamados/${chamado.id_chamado}/chat`);
-          
-          // Verifica se há novas mensagens do OUTRO usuário para marcar como lido
-          const hasNewFromOther = response.data.some(m => 
-            m.id_usuario !== auth.user.id_usuario && !m.dt_leitura
-          );
-
-          if (hasNewFromOther) {
-            markChatAsRead();
-          }
-
-          // Só atualiza se houver qualquer mudança (mensagem nova ou status de leitura novo)
-          const currentIds = currentChat.map(m => `${m.id}-${m.dt_leitura}`).join(',');
-          const newIds = response.data.map(m => `${m.id}-${m.dt_leitura}`).join(',');
-
-          if (currentIds !== newIds) {
-            setCurrentChat(response.data);
-          }
-        } catch (error) {
-          console.error("Erro ao atualizar chat:", error);
-        }
-      }, 5000);
     }
-    return () => clearInterval(interval);
-  }, [isChatOpen, currentChat.length, chamado.id_chamado]);
+
+    if (window.Echo) {
+        const channelName = `chamado.${chamado.id_chamado}`;
+        const channel = window.Echo.private(channelName);
+
+        channel.listen('.NewChamadoChatMessage', (e) => {
+            const novaMsg = e.message;
+
+            setCurrentChat(prev => {
+                // Remove a mensagem otimista e substitui pela real (do server)
+                const filtered = prev.filter(m => !(m.isOptimistic && m.ds_mensagem === novaMsg.ds_mensagem && m.id_usuario === novaMsg.id_usuario));
+                
+                if (filtered.some(m => m.id === novaMsg.id)) return filtered;
+
+                if (novaMsg.id_usuario !== auth.user.id_usuario && isChatOpen) {
+                    markChatAsRead();
+                    return [...filtered, { ...novaMsg, dt_leitura: new Date().toISOString() }];
+                }
+                return [...filtered, novaMsg];
+            });
+
+            if (isChatOpen) {
+                setTimeout(() => scrollToBottom("smooth"), 100);
+            }
+        });
+
+        // Ouve as mensagens via Whisper para velocidade instantânea
+        channel.listenForWhisper('new-message', (novaMsg) => {
+            setCurrentChat(prev => {
+                if (prev.some(m => m.id === novaMsg.id || (m.isOptimistic && m.ds_mensagem === novaMsg.ds_mensagem))) return prev;
+                
+                if (novaMsg.id_usuario !== auth.user.id_usuario && isChatOpen) {
+                    markChatAsRead();
+                    return [...prev, { ...novaMsg, dt_leitura: new Date().toISOString() }];
+                }
+                return [...prev, novaMsg];
+            });
+
+            if (isChatOpen) {
+                setTimeout(() => scrollToBottom("smooth"), 100);
+            }
+        });
+
+        return () => {
+            channel.stopListening('.NewChamadoChatMessage');
+            window.Echo.leave(channelName);
+        };
+    }
+  }, [isChatOpen, chamado.id_chamado]);
 
   // Scroll automático ao abrir o chat ou receber nova mensagem
   React.useEffect(() => {
@@ -141,13 +161,35 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
     e.preventDefault();
     if (!chatData.mensagem && !chatData.arquivo) return;
 
+    // Atualização Otimista
+    const isFile = !!chatData.arquivo;
+    const optimisticMessage = {
+        id: `opt_${Date.now()}`,
+        id_chamado: chamado.id_chamado,
+        id_usuario: auth.user.id_usuario,
+        ds_mensagem: chatData.mensagem,
+        ds_caminho_arquivo: isFile ? "pending" : null, // Arquivos demoram mais, melhor nao mandar no whisper
+        dt_envio: new Date().toISOString(),
+        usuario: auth.user,
+        dt_leitura: null,
+        isOptimistic: true 
+    };
+
+    setCurrentChat(prev => [...prev, optimisticMessage]);
+    scrollToBottom("smooth");
+
+    // Envio P2P Whisper se não for arquivo
+    if (window.Echo && !isFile && chatData.mensagem) {
+        window.Echo.private(`chamado.${chamado.id_chamado}`)
+                   .whisper('new-message', optimisticMessage);
+    }
+
     postChat(route('chamados.chat', chamado.id_chamado), {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
             resetChat();
             markChatAsRead();
-            // Busca as mensagens imediatamente após o envio para o usuário ver na hora
             axios.get(`/api/chamados/${chamado.id_chamado}/chat`).then(res => {
               setCurrentChat(res.data);
               scrollToBottom("auto");
@@ -1144,25 +1186,26 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
                               {msg.ds_caminho_arquivo && (
                                 isChatImage(msg.ds_caminho_arquivo) ? (
                                   <a 
-                                    href={`/storage/${msg.ds_caminho_arquivo}`} 
-                                    target="_blank" 
-                                    className="mt-2 block rounded-xl overflow-hidden border border-white/20 hover:scale-[1.02] transition-transform"
+                                    href={msg.ds_caminho_arquivo === "pending" ? "#" : `/storage/${msg.ds_caminho_arquivo}`} 
+                                    target={msg.ds_caminho_arquivo === "pending" ? "_self" : "_blank"} 
+                                    className={cn("mt-2 block rounded-xl overflow-hidden border border-white/20 hover:scale-[1.02] transition-transform", msg.ds_caminho_arquivo === "pending" && "opacity-50 blur-[2px]")}
                                   >
                                     <img 
-                                      src={`/storage/${msg.ds_caminho_arquivo}`} 
+                                      src={msg.ds_caminho_arquivo === "pending" ? "/images/favicon.png" : `/storage/${msg.ds_caminho_arquivo}`} 
                                       alt="Chat Attachment" 
                                       className="max-w-full h-auto object-cover max-h-[200px] w-full"
                                     />
                                   </a>
                                 ) : (
                                   <a 
-                                    href={`/storage/${msg.ds_caminho_arquivo}`} 
-                                    target="_blank" 
+                                    href={msg.ds_caminho_arquivo === "pending" ? "#" : `/storage/${msg.ds_caminho_arquivo}`} 
+                                    target={msg.ds_caminho_arquivo === "pending" ? "_self" : "_blank"} 
                                     className={cn(
                                       "mt-2 flex items-center gap-3 p-2.5 rounded-xl border transition-all", 
                                       isMe 
                                         ? "bg-white/10 border-white/20 hover:bg-white/20 text-white" 
-                                        : "bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-700 text-indigo-600 dark:text-indigo-400 hover:border-indigo-300"
+                                        : "bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-700 text-indigo-600 dark:text-indigo-400 hover:border-indigo-300",
+                                      msg.ds_caminho_arquivo === "pending" && "opacity-50"
                                     )}
                                   >
                                     <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center shrink-0">

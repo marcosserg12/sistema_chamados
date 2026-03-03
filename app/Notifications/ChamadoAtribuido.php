@@ -21,7 +21,7 @@ class ChamadoAtribuido extends Notification
     public function via($notifiable)
     {
         $prefs = $notifiable->preferencias ?? [];
-        $channels = ['database'];
+        $channels = ['database', 'broadcast'];
 
         if (($prefs['canal_email'] ?? true) !== false) {
             $channels[] = 'mail';

@@ -3,9 +3,10 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 
-class NovoChat extends Notification
+class NovoChat extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -23,7 +24,7 @@ class NovoChat extends Notification
     public function via($notifiable)
     {
         $prefs = $notifiable->preferencias ?? [];
-        $channels = ['database'];
+        $channels = ['database', 'broadcast'];
 
         if (($prefs['canal_email'] ?? true) !== false) {
             $channels[] = 'mail';

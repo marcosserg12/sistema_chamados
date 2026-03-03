@@ -21,7 +21,7 @@ class ChamadoCriado extends Notification
     public function via($notifiable)
     {
         $prefs = $notifiable->preferencias ?? [];
-        $channels = ['database'];
+        $channels = ['database', 'broadcast'];
 
         // Só envia e-mail se o usuário tiver a preferência ativa (padrão é true)
         if (($prefs['canal_email'] ?? true) !== false) {
