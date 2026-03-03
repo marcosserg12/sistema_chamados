@@ -4,9 +4,10 @@ namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Notifications\Notification;
 
-class NovoChat extends Notification implements ShouldQueue
+class NovoChat extends Notification implements ShouldQueue, ShouldBroadcast
 {
     use Queueable;
 

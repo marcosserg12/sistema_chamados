@@ -71,7 +71,7 @@ const getNavigationGroups = (perfilId) => {
       items: [
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, show: true }, // Todos veem
         { name: "Chamados", href: "/chamados", icon: Ticket, show: true }, // Todos veem
-        { name: "Quadro Tarefas", href: "/board", icon: Kanban, show: isAdmin || isTecnico || isSuperAdmin }, // Tecnicos e admins
+        { name: "Quadro Tarefas", href: "/board", icon: Kanban, show:  isTecnico || isSuperAdmin }, // Tecnicos e admins
       ]
     },
     {

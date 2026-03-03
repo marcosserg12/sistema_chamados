@@ -27,18 +27,6 @@ const KanbanBoard = ({ initialColumns, auth }) => {
     const [newComment, setNewComment] = useState("");
     const [newChecklistItem, setNewChecklistItem] = useState("");
 
-    // Formatar grau
-    const getGrauLabel = (grau) => {
-        const labels = {
-            '1': { text: 'Baixo (2 dias)', color: 'text-emerald-500 bg-emerald-500/10' },
-            '2': { text: 'Médio (12 horas)', color: 'text-blue-500 bg-blue-500/10' },
-            '3': { text: 'Alto (4 horas)', color: 'text-amber-500 bg-amber-500/10' },
-            '4': { text: 'Crítico (1 hora)', color: 'text-rose-500 bg-rose-500/10' },
-            '5': { text: 'Planejado', color: 'text-slate-500 bg-slate-500/10' }
-        };
-        return labels[grau] || { text: 'Padrão', color: 'text-slate-500 bg-slate-500/10' };
-    };
-
     // Obter iniciais
     const getInitials = (name) => {
         if (!name) return "MS";
@@ -173,7 +161,6 @@ const KanbanBoard = ({ initialColumns, auth }) => {
 
                                 <div className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden p-1 bg-slate-100/50 dark:bg-slate-800/30 rounded-lg custom-scrollbar relative min-h-0">
                                     {column.cards.map((card) => {
-                                        const grau = getGrauLabel(card.st_grau);
                                         return (
                                             <div
                                                 key={card.id_chamado}
@@ -188,11 +175,6 @@ const KanbanBoard = ({ initialColumns, auth }) => {
                                                         <Ticket className="w-2.5 h-2.5" />
                                                         #{card.id_chamado}
                                                     </div>
-                                                    {card.st_grau && (
-                                                        <span className={cn("text-[7px] font-bold uppercase px-1 py-0.5 rounded", grau.color)}>
-                                                            {grau.text.split(' ')[0]}
-                                                        </span>
-                                                    )}
                                                 </div>
                                                 <h4 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 leading-tight mb-1.5 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                                                     {card.ds_titulo}

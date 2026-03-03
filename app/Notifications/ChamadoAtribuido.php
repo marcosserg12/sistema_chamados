@@ -3,9 +3,10 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Notifications\Notification;
 
-class ChamadoAtribuido extends Notification
+class ChamadoAtribuido extends Notification implements ShouldBroadcast
 {
     use Queueable;
 
