@@ -312,7 +312,11 @@ class ChamadoController extends Controller
             ->where('id_chamado', $id)->select('u.ds_nome as ds_nome_usuario', 'u.ds_foto as ds_foto_usuario', 'dt_comentario as dt_insert',
                 DB::raw("CONCAT('Observação: ', ds_comentario) as ds_historico"));
 
-        return $histStatus->union($histUsuario)->union($histComentarios)->orderBy('dt_insert', 'desc')->get();
+        $histEdicao = HistoricoEdicao::join('tb_usuario_laravel as u', 'tb_historico_edicao.id_usuario', '=', 'u.id_usuario')
+            ->where('id_chamado', $id)->select('u.ds_nome as ds_nome_usuario', 'u.ds_foto as ds_foto_usuario', 'tb_historico_edicao.dt_update as dt_insert',
+                DB::raw("'Chamado editado (campos principais atualizados)' as ds_historico"));
+
+        return $histStatus->union($histUsuario)->union($histComentarios)->union($histEdicao)->orderBy('dt_insert', 'desc')->get();
     }
 
     private function dispararNotificacaoComentario($chamado, $user, $comentario)

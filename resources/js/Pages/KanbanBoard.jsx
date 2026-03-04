@@ -127,8 +127,8 @@ const KanbanBoard = ({ initialColumns, auth }) => {
     return (
         <AppLayout>
             <Head title="Quadro Kanban" />
-            <div className="w-full h-[calc(100vh-70px)] flex flex-col pb-2 px-4">
-                <div className="flex-none mb-2 mt-1">
+            <div className="w-full h-[calc(102vh-145px)] flex flex-col pb-2 px-2 sm:px-4">
+                <div className="flex-none mb-3 mt-1">
                     <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
                         Quadro de Chamados
                     </h1>
@@ -151,7 +151,7 @@ const KanbanBoard = ({ initialColumns, auth }) => {
                                             column.id === '1' && "text-amber-700 dark:text-amber-400",
                                             column.id === '9' && "text-emerald-700 dark:text-emerald-400"
                                         )}>
-                                            {column.title}
+                                            {column.title}{column.id === '9' && " (Últimos 7 dias)"}
                                         </h3>
                                         <span className="font-bold text-[10px] px-1.5 py-0.5 rounded bg-white/60 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 shadow-sm border border-slate-200/50 dark:border-slate-700/50">
                                             {column.cards.length}

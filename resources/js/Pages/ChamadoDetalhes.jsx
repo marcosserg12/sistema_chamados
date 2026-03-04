@@ -199,7 +199,7 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
   };
 
   // Form de Edição Expandido
-  const { data: editData, setData: setEditData, post: postEdit, processing: editProcessing, errors: editErrors, reset: resetEdit } = useForm({
+  const { data: editData, setData: setEditData, post: postEdit, transform: transformEdit, processing: editProcessing, errors: editErrors, reset: resetEdit } = useForm({
     ds_titulo: chamado.ds_titulo || "",
     id_empresa: chamado.id_empresa ? String(chamado.id_empresa) : "",
     id_localizacao: chamado.id_localizacao ? String(chamado.id_localizacao) : "",
@@ -275,10 +275,15 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
 
   const handleEditSubmit = (e) => {
     e.preventDefault();
-    // Usamos post com _method: 'put' para suportar upload de arquivos no Laravel via multipart/form-data
+    // Usamos transform para adicionar o _method: 'put' no payload, 
+    // permitindo que o Laravel trate como PUT mesmo sendo enviado via POST (necessário para arquivos)
+    transformEdit((data) => ({
+      ...data,
+      _method: 'put',
+    }));
+
     postEdit(route('chamados.update', chamado.id_chamado), {
       forceFormData: true,
-      _method: 'put',
       onSuccess: () => {
         setIsEditModalOpen(false);
         toast.success("Chamado editado com sucesso!");

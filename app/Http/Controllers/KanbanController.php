@@ -42,6 +42,11 @@ class KanbanController extends Controller
                 'u_tec.id_usuario as id_tecnico',
                 'ma.ds_descricao_motivo as ds_motivo'
             )
+            // Filtra resolvidos para mostrar apenas os últimos 7 dias
+            ->where(function($q) {
+                $q->where('tb_chamados.st_status', '!=', 9)
+                  ->orWhere('tb_chamados.dt_update', '>=', now()->subDays(7));
+            })
             // Prioriza o técnico logado se o status for 'Em Andamento' (1)
             ->orderByRaw("CASE WHEN tb_chamados.st_status = 1 AND rl.id_usuario = ? THEN 0 ELSE 1 END", [$user->id_usuario])
             ->orderBy('tb_chamados.ordem_kanban', 'asc')
