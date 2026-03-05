@@ -36,11 +36,16 @@ class ChamadoController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $filters = $request->only(['search', 'status', 'tecnico', 'localizacao']);
+        $filters = $request->only(['search', 'status', 'tecnico', 'localizacao', 'solicitante']);
 
         // 1. Dados para os Selects
         $tecnicos = Usuario::where('id_perfil', 4)
             ->where('st_ativo', 'A')
+            ->select('id_usuario', 'ds_nome')
+            ->orderBy('ds_nome')
+            ->get();
+
+        $solicitantes = Usuario::where('st_ativo', 'A')
             ->select('id_usuario', 'ds_nome')
             ->orderBy('ds_nome')
             ->get();
@@ -90,10 +95,11 @@ class ChamadoController extends Controller
         return Inertia::render('Chamados', [
             'chamados' => $chamados,
             'tecnicos' => $tecnicos,
+            'solicitantes' => $solicitantes,
             'localizacoes' => $localizacoes,
             'stats' => $stats,
             'filters' => array_merge([
-                'search' => '', 'status' => 'todos', 'tecnico' => 'todos', 'localizacao' => 'todos'
+                'search' => '', 'status' => 'todos', 'tecnico' => 'todos', 'localizacao' => 'todos', 'solicitante' => 'todos'
             ], $filters)
         ]);
     }

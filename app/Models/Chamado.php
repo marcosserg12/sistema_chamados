@@ -162,6 +162,12 @@ class Chamado extends Model
             }
         });
 
+        $query->when($filters['solicitante'] ?? null, function ($q, $solicitante) {
+            if ($solicitante !== 'todos') {
+                $q->where('tb_chamados.id_usuario', $solicitante);
+            }
+        });
+
         $query->when($filters['localizacao'] ?? null, function ($q, $localizacao) {
             if ($localizacao !== 'todos') {
                 $q->where('tb_chamados.id_localizacao', $localizacao);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, Head, router } from "@inertiajs/react";
+import { Link, Head, router, usePage } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
 import { Card, CardContent } from "@/Components/ui/card";
 import { Input } from "@/Components/ui/input";
@@ -16,13 +16,22 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/Components/ui/avatar";
 
-export default function Chamados({ chamados, tecnicos, localizacoes = [], stats, filters }) {
+export default function Chamados({ chamados, tecnicos, solicitantes = [], localizacoes = [], stats, filters }) {
+    const { auth } = usePage().props;
     const [search, setSearch] = useState(filters?.search || "");
     const [status, setStatus] = useState(filters?.status || "todos");
     const [tecnico, setTecnico] = useState(filters?.tecnico || "todos");
+    const [solicitante, setSolicitante] = useState(filters?.solicitante || "todos");
     const [localizacao, setLocalizacao] = useState(filters?.localizacao || "todos");
 
     const isFirstRender = useRef(true);
+
+    // Ordenar solicitantes: usuário logado primeiro, depois o resto alfabeticamente
+    const sortedSolicitantes = [...solicitantes].sort((a, b) => {
+        if (a.id_usuario === auth.user.id_usuario) return -1;
+        if (b.id_usuario === auth.user.id_usuario) return 1;
+        return a.ds_nome.localeCompare(b.ds_nome);
+    });
 
     // =========================================================================
     // PESQUISA E FILTROS EM TEMPO REAL
@@ -36,7 +45,7 @@ export default function Chamados({ chamados, tecnicos, localizacoes = [], stats,
         const delayDebounceFn = setTimeout(() => {
             router.get(
                 "/chamados",
-                { search, status, tecnico, localizacao },
+                { search, status, tecnico, solicitante, localizacao },
                 {
                     preserveState: true,
                     preserveScroll: true,
@@ -46,7 +55,7 @@ export default function Chamados({ chamados, tecnicos, localizacoes = [], stats,
         }, 400);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [search, status, tecnico, localizacao]);
+    }, [search, status, tecnico, solicitante, localizacao]);
 
     // =========================================================================
     // RENDERIZADOR DE STATUS
@@ -93,8 +102,8 @@ export default function Chamados({ chamados, tecnicos, localizacoes = [], stats,
 
                     <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3 w-full xl:w-auto">
                         <Select value={status} onValueChange={setStatus}>
-                            <SelectTrigger className="w-full sm:w-[160px] h-10 bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 shadow-sm focus:ring-0 text-[14px] hover:dark:border-slate-600 font-medium transition-colors">
-                                <SelectValue placeholder="Todos os Status" />
+                            <SelectTrigger className="w-full sm:w-[150px] h-10 bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 shadow-sm focus:ring-0 text-[14px] hover:dark:border-slate-600 font-medium transition-colors">
+                                <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
                                 <SelectItem value="todos" className="text-[14px] dark:focus:bg-slate-700 font-medium">Todos os Status</SelectItem>
@@ -104,12 +113,26 @@ export default function Chamados({ chamados, tecnicos, localizacoes = [], stats,
                             </SelectContent>
                         </Select>
 
-                        <Select value={tecnico} onValueChange={setTecnico}>
+                        <Select value={solicitante} onValueChange={setSolicitante}>
                             <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 shadow-sm focus:ring-0 text-[14px] hover:dark:border-slate-600 font-medium transition-colors">
-                                <SelectValue placeholder="Todos os Usuários" />
+                                <SelectValue placeholder="Criador" />
                             </SelectTrigger>
                             <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
-                                <SelectItem value="todos" className="text-[14px] dark:focus:bg-slate-700 font-medium">Todos os Usuários</SelectItem>
+                                <SelectItem value="todos" className="text-[14px] dark:focus:bg-slate-700 font-medium">Todos os Criadores</SelectItem>
+                                {sortedSolicitantes?.map((solic) => (
+                                    <SelectItem key={solic.id_usuario} value={String(solic.id_usuario)} className="text-[14px] dark:focus:bg-slate-700 font-medium">
+                                        {solic.ds_nome} {solic.id_usuario === auth.user.id_usuario ? "(Eu)" : ""}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={tecnico} onValueChange={setTecnico}>
+                            <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 shadow-sm focus:ring-0 text-[14px] hover:dark:border-slate-600 font-medium transition-colors">
+                                <SelectValue placeholder="Técnico" />
+                            </SelectTrigger>
+                            <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
+                                <SelectItem value="todos" className="text-[14px] dark:focus:bg-slate-700 font-medium">Todos os Técnicos</SelectItem>
                                 {tecnicos?.map((tec) => (
                                     <SelectItem key={tec.id_usuario} value={String(tec.id_usuario)} className="text-[14px] dark:focus:bg-slate-700 font-medium">
                                         {tec.ds_nome}
@@ -120,7 +143,7 @@ export default function Chamados({ chamados, tecnicos, localizacoes = [], stats,
 
                         <Select value={localizacao} onValueChange={setLocalizacao}>
                             <SelectTrigger className="w-full sm:w-[180px] h-10 bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 shadow-sm focus:ring-0 text-[14px] hover:dark:border-slate-600 font-medium transition-colors">
-                                <SelectValue placeholder="Todas as Localizações" />
+                                <SelectValue placeholder="Localização" />
                             </SelectTrigger>
                             <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
                                 <SelectItem value="todos" className="text-[14px] dark:focus:bg-slate-700 font-medium">Todas as Localizações</SelectItem>
