@@ -45,13 +45,19 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   const [localErrors, setLocalErrors] = useState({});
 
   // =========================================================================
-  // 1. AUTO-SELEÇÃO DE EMPRESA (NOVA LÓGICA)
+  // 1. AUTO-SELEÇÃO DE EMPRESA E LOCALIZAÇÃO (NOVA LÓGICA)
   // =========================================================================
   useEffect(() => {
     if (empresas.length === 1 && !data.id_empresa) {
         setData("id_empresa", String(empresas[0].id_empresa));
     }
   }, [empresas]);
+
+  useEffect(() => {
+    if (localizacoes.length === 1 && !data.id_localizacao) {
+        setData("id_localizacao", String(localizacoes[0].id_localizacao));
+    }
+  }, [localizacoes]);
 
   // =========================================================================
   // LÓGICA DO CTRL+V (COLAR IMAGENS)

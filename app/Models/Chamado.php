@@ -139,6 +139,14 @@ class Chamado extends Model
     }
 
     /**
+     * Alias para scopeVisivelPara para compatibilidade com o SearchController
+     */
+    public function scopePorPerfil($query, $user)
+    {
+        return $this->scopeVisivelPara($query, $user);
+    }
+
+    /**
      * Scope para aplicar filtros dinâmicos
      */
     public function scopeFiltrar($query, array $filters)

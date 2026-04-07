@@ -8,6 +8,7 @@ use App\Models\Empresa;
 use App\Models\Localizacao;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -107,14 +108,8 @@ class UsuarioController extends Controller
             'st_ativo' => 'A'
         ]);
 
-        // Salva os relacionamentos N:N
-        $usuario->empresas()->sync($request->empresas);
-
-        // ATENÇÃO: Certifique-se que no Model Usuario existe o método localizacoes()
-        // return $this->belongsToMany(Localizacao::class, 'rl_usuario_localizacao', ...);
-        if ($request->has('localizacoes')) {
-            $usuario->localizacoes()->sync($request->localizacoes);
-        }
+        // Salva os relacionamentos na tabela ternária rl_usuario_empresa_localizacao
+        $this->syncVinculos($usuario, $request->empresas, $request->localizacoes ?? []);
 
         return redirect()->back()->with('success_password', $senhaGerada);
     }
@@ -127,7 +122,7 @@ class UsuarioController extends Controller
             'name' => 'required',
             'email' => 'required|email|unique:tb_usuario_laravel,ds_email,' . $id . ',id_usuario',
             'login' => 'required|unique:tb_usuario_laravel,ds_usuario,' . $id . ',id_usuario',
-            'empresas' => 'array',
+            'empresas' => 'required|array|min:1',
             'localizacoes' => 'array',
         ]);
 
@@ -141,12 +136,50 @@ class UsuarioController extends Controller
             'id_perfil' => $request->role,
         ]);
 
-        $usuario->empresas()->sync($request->empresas);
-
-        if ($request->has('localizacoes')) {
-            $usuario->localizacoes()->sync($request->localizacoes);
-        }
+        // Atualiza os relacionamentos na tabela ternária rl_usuario_empresa_localizacao
+        $this->syncVinculos($usuario, $request->empresas, $request->localizacoes ?? []);
 
         return redirect()->back();
+    }
+
+    /**
+     * Sincroniza os vínculos ternários (Usuário x Empresa x Localização)
+     */
+    private function syncVinculos($usuario, array $empresasIds, array $localizacoesIds)
+    {
+        DB::table('rl_usuario_empresa_localizacao')->where('id_usuario', $usuario->id_usuario)->delete();
+
+        $vinculos = [];
+
+        foreach ($empresasIds as $idEmpresa) {
+            // Busca quais das localizações selecionadas pertencem a esta empresa
+            $locaisDestaEmpresa = DB::table('rl_empresa_localizacao')
+                ->where('id_empresa', $idEmpresa)
+                ->whereIn('id_localizacao', $localizacoesIds)
+                ->pluck('id_localizacao');
+
+            if ($locaisDestaEmpresa->count() > 0) {
+                // Se houver localizações selecionadas para esta empresa, cria uma linha para cada uma
+                foreach ($locaisDestaEmpresa as $idLocalizacao) {
+                    $vinculos[] = [
+                        'id_usuario' => $usuario->id_usuario,
+                        'id_empresa' => $idEmpresa,
+                        'id_localizacao' => $idLocalizacao
+                    ];
+                }
+            } else {
+                // Se a empresa foi selecionada mas nenhuma localização dela foi,
+                // cria uma linha com id_localizacao NULL para garantir acesso à empresa
+                $vinculos[] = [
+                    'id_usuario' => $usuario->id_usuario,
+                    'id_empresa' => $idEmpresa,
+                    'id_localizacao' => null
+                ];
+            }
+        }
+
+        if (!empty($vinculos)) {
+            DB::table('rl_usuario_empresa_localizacao')->insert($vinculos);
+        }
     }
 }
