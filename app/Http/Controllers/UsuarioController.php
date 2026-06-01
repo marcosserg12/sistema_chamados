@@ -142,6 +142,26 @@ class UsuarioController extends Controller
         return redirect()->back();
     }
 
+    public function toggleStatus($id)
+    {
+        $user = auth()->user();
+
+        if (!in_array($user->id_perfil, [1, 5])) {
+            abort(403);
+        }
+
+        $usuario = Usuario::findOrFail($id);
+
+        if ($usuario->id_usuario === $user->id_usuario) {
+            return redirect()->back()->withErrors(['toggle' => 'Você não pode desativar sua própria conta.']);
+        }
+
+        $usuario->st_ativo = ($usuario->st_ativo === 'A') ? 'I' : 'A';
+        $usuario->save();
+
+        return redirect()->back();
+    }
+
     /**
      * Sincroniza os vínculos ternários (Usuário x Empresa x Localização)
      */

@@ -50,13 +50,22 @@ class LoginRequest extends FormRequest
 
         if (! Auth::attempt([
             $field => $login,
-            'password' => $this->input('ds_senha') 
+            'password' => $this->input('ds_senha')
         ], $this->boolean('remember'))) {
 
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
                 'login' => 'Usuário, e-mail ou senha incorretos.',
+            ]);
+        }
+
+        if (Auth::user()->st_ativo !== 'A') {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'login' => 'Sua conta está desativada. Entre em contato com o administrador.',
             ]);
         }
 

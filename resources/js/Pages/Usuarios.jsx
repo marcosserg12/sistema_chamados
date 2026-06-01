@@ -37,7 +37,9 @@ import {
   Building2,
   MapPin,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  UserCheck,
+  UserX
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -407,7 +409,12 @@ const getRoleStyle = (roleId) => {
               const { icon: RoleIcon, color } = getRoleStyle(usuario.role_id, usuario.role_name);
 
               return (
-                <Card key={usuario.id} className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50 hover:shadow-md transition-all group backdrop-blur-sm">
+                <Card key={usuario.id} className={cn(
+                  "border-slate-200 dark:border-slate-700/50 hover:shadow-md transition-all group backdrop-blur-sm",
+                  usuario.ativo
+                    ? "bg-white dark:bg-slate-800/50"
+                    : "bg-slate-50 dark:bg-slate-900/60 opacity-70"
+                )}>
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
@@ -417,9 +424,16 @@ const getRoleStyle = (roleId) => {
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                          <h3 className="font-bold text-slate-900 dark:text-white leading-tight truncate max-w-[140px]" title={usuario.name}>
-                            {usuario.name}
-                          </h3>
+                          <div className="flex items-center gap-1.5">
+                            <h3 className="font-bold text-slate-900 dark:text-white leading-tight truncate max-w-[120px]" title={usuario.name}>
+                              {usuario.name}
+                            </h3>
+                            {!usuario.ativo && (
+                              <Badge className="text-[9px] uppercase font-extrabold shadow-none bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400 px-1 py-0">
+                                Inativo
+                              </Badge>
+                            )}
+                          </div>
                           <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
                             <Mail className="w-3 h-3 shrink-0" /> <span className="truncate max-w-[130px]" title={usuario.email}>{usuario.email}</span>
                           </div>
@@ -430,13 +444,27 @@ const getRoleStyle = (roleId) => {
                         <Badge className={cn("text-[10px] uppercase font-extrabold shadow-none", color)}>
                             <RoleIcon className="w-3 h-3 mr-1" /> {usuario.role_name}
                         </Badge>
-                        <button
-                            onClick={() => handleOpenEdit(usuario)}
-                            className="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-                            title="Editar Usuário"
-                        >
-                            <Edit className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                              onClick={() => router.put(route('usuarios.toggle-status', usuario.id))}
+                              className={cn(
+                                "p-1 transition-colors",
+                                usuario.ativo
+                                  ? "text-green-500 hover:text-red-500 dark:text-green-400 dark:hover:text-red-400"
+                                  : "text-red-400 hover:text-green-500 dark:hover:text-green-400"
+                              )}
+                              title={usuario.ativo ? "Desativar Usuário" : "Ativar Usuário"}
+                          >
+                              {usuario.ativo ? <UserCheck className="w-4 h-4" /> : <UserX className="w-4 h-4" />}
+                          </button>
+                          <button
+                              onClick={() => handleOpenEdit(usuario)}
+                              className="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                              title="Editar Usuário"
+                          >
+                              <Edit className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
 
