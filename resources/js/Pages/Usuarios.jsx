@@ -39,7 +39,8 @@ import {
   ChevronLeft,
   ChevronRight,
   UserCheck,
-  UserX
+  UserX,
+  KeyRound
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,8 @@ export default function Usuarios({ usuarios, perfis, empresas = [], filters }) {
   const [editingId, setEditingId] = useState(null);
   const [search, setSearch] = useState(filters?.search || "");
   const [generatedPassword, setGeneratedPassword] = useState(null);
+  const [passwordResetTarget, setPasswordResetTarget] = useState(null);
+  const [resetPasswordResult, setResetPasswordResult] = useState(null);
   const isFirstRender = useRef(true);
 
   // Agora usamos Arrays para empresas e localizações
@@ -135,6 +138,9 @@ export default function Usuarios({ usuarios, perfis, empresas = [], filters }) {
       setGeneratedPassword(flash.success_password);
       setIsDialogOpen(false);
       reset();
+    }
+    if (flash?.reset_password) {
+      setResetPasswordResult(flash.reset_password);
     }
   }, [flash]);
 
@@ -250,6 +256,51 @@ const getRoleStyle = (roleId) => {
             <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between">
               <code className="text-lg font-mono font-bold text-slate-800 dark:text-slate-100">{generatedPassword}</code>
               <Button size="sm" variant="ghost" onClick={copyToClipboard}><Copy className="w-4 h-4 text-slate-500" /></Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* MODAL CONFIRMAÇÃO RESET SENHA */}
+        <Dialog open={!!passwordResetTarget} onOpenChange={(open) => !open && setPasswordResetTarget(null)}>
+          <DialogContent className="max-w-sm bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-slate-800 dark:text-slate-100">
+                <KeyRound className="w-5 h-5 text-amber-500" /> Resetar Senha
+              </DialogTitle>
+              <DialogDescription className="pt-2 text-slate-600 dark:text-slate-300">
+                Tem certeza que deseja resetar a senha de <strong>{passwordResetTarget?.name}</strong>? Uma nova senha aleatória será gerada.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setPasswordResetTarget(null)}>
+                Cancelar
+              </Button>
+              <Button
+                className="bg-amber-500 hover:bg-amber-600 text-white"
+                onClick={() => {
+                  router.put(route('usuarios.reset-password', passwordResetTarget.id), {}, {
+                    onSuccess: () => setPasswordResetTarget(null),
+                  });
+                }}
+              >
+                <KeyRound className="w-4 h-4 mr-2" /> Confirmar Reset
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* MODAL NOVA SENHA APÓS RESET */}
+        <Dialog open={!!resetPasswordResult} onOpenChange={(open) => !open && setResetPasswordResult(null)}>
+          <DialogContent className="max-w-md bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+            <DialogHeader>
+              <DialogTitle className="text-amber-500 flex items-center gap-2"><KeyRound className="w-5 h-5" /> Senha Resetada!</DialogTitle>
+              <DialogDescription className="pt-2 text-slate-600 dark:text-slate-300">Anote a nova senha provisória antes de fechar.</DialogDescription>
+            </DialogHeader>
+            <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <code className="text-lg font-mono font-bold text-slate-800 dark:text-slate-100">{resetPasswordResult}</code>
+              <Button size="sm" variant="ghost" onClick={() => { navigator.clipboard.writeText(resetPasswordResult); toast.success("Copiado!"); setResetPasswordResult(null); }}>
+                <Copy className="w-4 h-4 text-slate-500" />
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -456,6 +507,13 @@ const getRoleStyle = (roleId) => {
                               title={usuario.ativo ? "Desativar Usuário" : "Ativar Usuário"}
                           >
                               {usuario.ativo ? <UserCheck className="w-4 h-4" /> : <UserX className="w-4 h-4" />}
+                          </button>
+                          <button
+                              onClick={() => setPasswordResetTarget(usuario)}
+                              className="p-1 text-slate-400 hover:text-amber-500 dark:hover:text-amber-400 transition-colors"
+                              title="Resetar Senha"
+                          >
+                              <KeyRound className="w-4 h-4" />
                           </button>
                           <button
                               onClick={() => handleOpenEdit(usuario)}

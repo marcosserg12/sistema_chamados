@@ -86,6 +86,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/usuarios', [UsuarioController::class, 'store'])->name('usuarios.store');
     Route::put('/usuarios/{id}', [UsuarioController::class, 'update'])->name('usuarios.update');
     Route::put('/usuarios/{id}/toggle-status', [UsuarioController::class, 'toggleStatus'])->name('usuarios.toggle-status');
+    Route::put('/usuarios/{id}/reset-password', [UsuarioController::class, 'resetPassword'])->name('usuarios.reset-password');
 
     Route::get('/localizacoes', [LocalizacaoController::class, 'index'])->name('localizacoes.index');
     Route::post('/localizacoes', [LocalizacaoController::class, 'store'])->name('localizacoes.store');

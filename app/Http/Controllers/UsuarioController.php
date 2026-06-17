@@ -142,6 +142,22 @@ class UsuarioController extends Controller
         return redirect()->back();
     }
 
+    public function resetPassword($id)
+    {
+        $user = auth()->user();
+
+        if (!in_array($user->id_perfil, [1, 5])) {
+            abort(403);
+        }
+
+        $usuario = Usuario::findOrFail($id);
+        $novaSenha = Str::random(8);
+
+        $usuario->update(['ds_senha' => Hash::make($novaSenha)]);
+
+        return redirect()->back()->with('reset_password', $novaSenha);
+    }
+
     public function toggleStatus($id)
     {
         $user = auth()->user();
