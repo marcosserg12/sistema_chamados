@@ -153,7 +153,10 @@ class UsuarioController extends Controller
         $usuario = Usuario::findOrFail($id);
         $novaSenha = Str::random(8);
 
-        $usuario->update(['ds_senha' => Hash::make($novaSenha)]);
+        $usuario->update([
+            'ds_senha' => Hash::make($novaSenha),
+            'st_reset_senha' => 1,
+        ]);
 
         return redirect()->back()->with('reset_password', $novaSenha);
     }

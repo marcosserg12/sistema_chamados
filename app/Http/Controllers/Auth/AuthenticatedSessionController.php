@@ -33,6 +33,10 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        if (auth()->user()->st_reset_senha == 1) {
+            return redirect()->route('alterar-senha.show');
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

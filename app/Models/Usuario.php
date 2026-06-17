@@ -22,6 +22,7 @@ class Usuario extends Authenticatable
         'ds_senha',
         'id_perfil',
         'st_ativo',
+        'st_reset_senha',
         'preferencias'
     ];
     protected $hidden = [

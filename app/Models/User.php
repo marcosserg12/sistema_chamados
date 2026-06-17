@@ -19,7 +19,7 @@ class User extends Authenticatable
     const UPDATED_AT = 'dt_update';
 
     protected $fillable = [
-        'ds_usuario', 'ds_nome', 'ds_email', 'ds_foto', 'nu_telefone', 'ds_senha', 'st_ativo', 'id_perfil', 'preferencias'
+        'ds_usuario', 'ds_nome', 'ds_email', 'ds_foto', 'nu_telefone', 'ds_senha', 'st_ativo', 'st_reset_senha', 'id_perfil', 'preferencias'
     ];
 
     protected $casts = [

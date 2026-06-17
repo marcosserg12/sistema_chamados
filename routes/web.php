@@ -15,6 +15,7 @@ use App\Http\Controllers\ConfiguracaoController;
 use App\Http\Controllers\ChamadoChecklistController;
 use App\Http\Controllers\KanbanController;
 use App\Http\Controllers\KanbanObservacaoController;
+use App\Http\Controllers\AlterarSenhaController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -28,6 +29,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/alterar-senha', [AlterarSenhaController::class, 'show'])->name('alterar-senha.show');
+    Route::post('/alterar-senha', [AlterarSenhaController::class, 'update'])->name('alterar-senha.update');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
