@@ -23,7 +23,7 @@ Uma tela de relatório que:
    visão "individual" (só os próprios chamados) para o Técnico, para que
    cada pessoa consiga falar sua parte na reunião a partir da própria tela.
 3. Permite exportar o que está sendo visto (respeitando filtros e
-   período) em Excel e PDF.
+   período) em PDF.
 
 ## Escopo
 
@@ -35,7 +35,7 @@ Uma tela de relatório que:
 - Filtros: técnico, tipo de chamado, status.
 - Navegação de período: ciclo terça-a-terça com setas anterior/próxima, e
   toggle para intervalo de datas personalizado.
-- Exportação em Excel (.xlsx) e PDF, respeitando filtros/período ativos.
+- Exportação em PDF, respeitando filtros/período ativos.
 - Controle de acesso por perfil (1, 4, 5), reaproveitando os scopes de
   visibilidade já existentes no model `Chamado`.
 
@@ -52,8 +52,8 @@ Uma tela de relatório que:
 - **Controller novo:** `App\Http\Controllers\RelatorioSemanalController`
   - `index(Request $request)`: renderiza a página Inertia `Relatorios`
     com os dados computados para o período/filtros atuais.
-  - `export(Request $request)`: gera e devolve o arquivo (xlsx ou pdf,
-    via parâmetro `formato`) para o período/filtros atuais.
+  - `export(Request $request)`: gera e devolve o PDF do período/filtros
+    atuais.
 - **Rota:**
   ```
   Route::get('/relatorios', [RelatorioSemanalController::class, 'index'])->name('relatorios.index');
@@ -64,7 +64,6 @@ Uma tela de relatório que:
 - **Página nova:** `resources/js/Pages/Relatorios.jsx`, seguindo o
   mesmo padrão visual/estrutural de `DashboardAdmin.jsx`.
 - **Dependências novas (composer):**
-  - `maatwebsite/laravel-excel` — exportação .xlsx
   - `barryvdh/laravel-dompdf` — exportação PDF
 
 ## Controle de acesso
@@ -146,11 +145,9 @@ status/técnico/tipo aplicados.
 
 ## Exportação
 
-- Botão "Exportar" na tela, com escolha de formato (Excel ou PDF).
+- Botão "Exportar PDF" na tela.
 - A exportação reflete exatamente o que está filtrado/no período atual
   na tela (mesma query da tabela detalhada, sem paginação).
-- Excel: uma planilha simples, colunas equivalentes às da tabela na
-  tela (ID, título, tipo, técnico, status, data, empresa/local).
 - PDF: mesma tabela, formatada para impressão/apresentação, com
   cabeçalho indicando o período do relatório.
 
@@ -164,5 +161,5 @@ status/técnico/tipo aplicados.
   - Que perfis 2 e 3 recebem 403 ao acessar `/relatorios`.
   - Navegação de período (semana anterior/seguinte calcula o intervalo
     terça-a-terça corretamente).
-  - Exportação gera arquivo com o formato e conteúdo esperado para um
+  - Exportação em PDF gera arquivo com o conteúdo esperado para um
     conjunto de dados conhecido.
