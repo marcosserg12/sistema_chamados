@@ -71,21 +71,11 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
       const motivoId = String(res.data.id_motivo_principal);
       const detalheId = String(res.data.id_motivo_associado);
 
-      // Busca as opções de motivo/detalhe já preenchidas aqui, em vez de
-      // depender só dos efeitos em cascata do formulário — evita a tela
-      // mostrar os selects vazios por causa da corrida entre o preenchimento
-      // e a busca dessas listas.
-      const [motivosRes, detalhesRes] = await Promise.all([
-        axios.get(`/api/motivos?id_tipo_chamado=${tipoId}`),
-        axios.get(
-          motivoId === "6"
-            ? `/api/detalhes-motivo?id_motivo=${motivoId}&id_empresa=${data.id_empresa || ""}`
-            : `/api/detalhes-motivo?id_motivo=${motivoId}`
-        ),
-      ]);
-      setMotivos(motivosRes.data);
-      setDetalhes(detalhesRes.data);
-
+      // Não busca motivo/detalhe aqui: os efeitos em cascata do formulário já
+      // fazem isso sozinhos assim que id_tipo_chamado/id_motivo_principal
+      // mudam abaixo. Buscar de novo aqui derrubava a tela (dois setMotivos
+      // seguidos trocando a lista enquanto o Select ainda está de pé
+      // quebravam o Portal do Radix).
       aiAcabouDePreencher.current = true;
       setData((prev) => ({
         ...prev,
