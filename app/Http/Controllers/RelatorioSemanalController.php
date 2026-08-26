@@ -18,7 +18,13 @@ class RelatorioSemanalController extends Controller
             return redirect()->route('chamados.index');
         }
 
-        $periodo = PeriodoRelatorio::ciclo($request->input('inicio'));
+        if ($request->input('modo') === 'personalizado' && $request->filled(['data_inicio', 'data_fim'])) {
+            $inicio = Carbon::parse($request->input('data_inicio'))->startOfDay();
+            $fim = Carbon::parse($request->input('data_fim'))->addDay()->startOfDay(); // fim inclusivo pro usuário, exclusivo internamente
+            $periodo = ['inicio' => $inicio, 'fim' => $fim];
+        } else {
+            $periodo = PeriodoRelatorio::ciclo($request->input('inicio'));
+        }
         $filters = $this->resolverFiltros($request, $user);
 
         $baseVisivel = Chamado::visivelPara($user)->filtrar($filters);
@@ -97,6 +103,7 @@ class RelatorioSemanalController extends Controller
             'filters' => $filters,
             'tecnicos' => $tecnicos,
             'tipos' => $tipos,
+            'modo' => $request->input('modo') === 'personalizado' ? 'personalizado' : 'ciclo',
         ]);
     }
 

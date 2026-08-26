@@ -6,14 +6,27 @@ import { Badge } from "@/Components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/Components/ui/select";
-import { FileText, Inbox, CheckCircle2, Clock } from "lucide-react";
+import { FileText, Inbox, CheckCircle2, Clock, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filters, tecnicos = [], tipos = [] }) {
+export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filters, tecnicos = [], tipos = [], modo }) {
   const [status, setStatus] = useState(filters?.status || "todos");
   const [tecnico, setTecnico] = useState(filters?.tecnico || "todos");
   const [tipo, setTipo] = useState(filters?.tipo || "todos");
+  const [personalizado, setPersonalizado] = useState(modo === "personalizado");
+  const [dataInicio, setDataInicio] = useState(periodo.inicio);
+  const [dataFim, setDataFim] = useState(periodo.fim);
   const isFirstRender = useRef(true);
+
+  const irParaCiclo = (novoInicio) => {
+    router.get("/relatorios", { inicio: novoInicio, status, tecnico, tipo }, { preserveState: true, preserveScroll: true });
+  };
+
+  const aplicarPersonalizado = () => {
+    router.get("/relatorios", {
+      modo: "personalizado", data_inicio: dataInicio, data_fim: dataFim, status, tecnico, tipo,
+    }, { preserveState: true, preserveScroll: true });
+  };
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -38,9 +51,36 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
               <FileText className="w-6 h-6 text-indigo-600" />
               Relatório Semanal
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">
-              Período: {periodo.inicio.split("-").reverse().join("/")} a {periodo.fim.split("-").reverse().join("/")}
-            </p>
+            {!personalizado ? (
+              <div className="flex items-center gap-2 mt-1">
+                <button onClick={() => irParaCiclo(shiftDate(periodo.inicio, -7))} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">
+                  <ChevronLeft className="w-4 h-4 text-slate-500" />
+                </button>
+                <p className="text-slate-500 dark:text-slate-400 text-sm">
+                  {formatBR(periodo.inicio)} a {formatBR(periodo.fim)}
+                </p>
+                <button onClick={() => irParaCiclo(shiftDate(periodo.inicio, 7))} className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">
+                  <ChevronRight className="w-4 h-4 text-slate-500" />
+                </button>
+                <button onClick={() => setPersonalizado(true)} className="ml-2 text-xs text-indigo-600 hover:underline flex items-center gap-1">
+                  <Calendar className="w-3 h-3" /> Período personalizado
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2 mt-1">
+                <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)}
+                  className="h-9 text-sm rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2" />
+                <span className="text-slate-400 text-sm">até</span>
+                <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)}
+                  className="h-9 text-sm rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2" />
+                <button onClick={aplicarPersonalizado} className="h-9 px-3 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                  Aplicar
+                </button>
+                <button onClick={() => setPersonalizado(false)} className="text-xs text-slate-500 hover:underline">
+                  Voltar pro ciclo semanal
+                </button>
+              </div>
+            )}
           </div>
           <Badge className="bg-indigo-600 w-fit text-white px-3 py-1">
             {isVisaoGeral ? "Visão Geral" : "Meus Chamados"}
@@ -181,4 +221,14 @@ function KpiItem({ title, value, icon: Icon, color }) {
       </CardContent>
     </Card>
   );
+}
+
+function shiftDate(isoDate, days) {
+  const d = new Date(isoDate + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function formatBR(isoDate) {
+  return isoDate.split("-").reverse().join("/");
 }
