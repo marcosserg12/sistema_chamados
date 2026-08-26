@@ -78,9 +78,9 @@ class AiChamadoService
         ];
 
         // A camada gratuita da API do Gemini ocasionalmente responde 503
-        // (sobrecarga temporária do modelo) — tenta mais uma vez antes de
-        // desistir, em vez de já mostrar erro pra pessoa.
-        $maxTentativas = 2;
+        // (sobrecarga temporária do modelo), às vezes em tentativas seguidas —
+        // tenta mais algumas vezes antes de desistir, em vez de já mostrar erro.
+        $maxTentativas = 3;
         $response = null;
 
         for ($tentativa = 1; $tentativa <= $maxTentativas; $tentativa++) {
@@ -222,6 +222,7 @@ class AiChamadoService
         $linhas[] = 'Regras:';
         $linhas[] = '- id_motivo_principal deve pertencer ao id_tipo_chamado escolhido, e id_motivo_associado deve pertencer ao id_motivo_principal escolhido (siga a árvore acima).';
         $linhas[] = '- st_grau só é diferente de 0 quando id_motivo_principal for 6 (Cadastro de Paciente): 1=Melhoria, 2=Problema, 3=Cadastro de Paciente, 4=Relatório, conforme o que a pessoa está pedindo. Nos demais casos, st_grau=0.';
+        $linhas[] = '- Pedidos para corrigir/alterar um dado de um paciente já cadastrado (ex: trocar o número de atendimento, corrigir nome, corrigir data) nos sistemas Sisibranutro/Gerencial usam st_grau=2 (Problema), não st_grau=3 — st_grau=3 é só para o cadastro de um paciente novo.';
         $linhas[] = '- titulo deve ser curto (até 100 caracteres), em português, resumindo o problema — não copie a descrição inteira.';
         $linhas[] = '- descricao deve reescrever o relato do usuário de forma clara, completa e bem escrita (corrija erros de português, organize em frases completas), mantendo só as informações que ele realmente deu — não invente nada novo.';
         $linhas[] = '- Se a descrição não tiver detalhe suficiente pra decidir com confiança, escolha a opção mais genérica/provável dentro da árvore — a pessoa revisa tudo antes de enviar o chamado.';

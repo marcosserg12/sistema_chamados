@@ -24,6 +24,7 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   const { auth } = usePage().props;
   const prefs = auth.user?.preferencias || {};
   const isFirstRender = React.useRef(true);
+  const aiAcabouDePreencher = React.useRef(false);
 
   const { data, setData, post, processing } = useForm({
     ds_titulo: "",
@@ -62,7 +63,7 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
       });
 
       if (!res.data.ok) {
-        toast.error(res.data.erro || "Não foi possível preencher automaticamente.");
+        toast.error(res.data.erro || "Não foi possível preencher automaticamente.", { duration: 8000 });
         return;
       }
 
@@ -85,6 +86,7 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
       setMotivos(motivosRes.data);
       setDetalhes(detalhesRes.data);
 
+      aiAcabouDePreencher.current = true;
       setData((prev) => ({
         ...prev,
         ds_titulo: res.data.titulo || prev.ds_titulo,
@@ -98,7 +100,7 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
       toast.success("Preenchido com IA — confira os campos abaixo antes de enviar.");
       setPainelIA(false);
     } catch (err) {
-      toast.error("Erro ao consultar a IA. Tente novamente ou preencha manualmente.");
+      toast.error("Erro ao consultar a IA. Tente novamente ou preencha manualmente.", { duration: 8000 });
     } finally {
       setCarregandoIA(false);
     }
@@ -223,55 +225,78 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   // =========================================================================
   // TEMPLATE AUTOMÁTICO PARA CADASTRO DE PACIENTE
   // =========================================================================
+  const MARCADOR_GERENCIAL = "Data da NRS:";
+  const MARCADOR_SISIBRANUTRO = "Nome da Mãe:";
+  const MARCADOR_ATENDIMENTO = "Número de atendimento (novo):";
+  const eDescricaoDeTemplate = (desc) =>
+    !desc || desc.includes(MARCADOR_GERENCIAL) || desc.includes(MARCADOR_SISIBRANUTRO) || desc.includes(MARCADOR_ATENDIMENTO);
+
   useEffect(() => {
+    // Uma descrição acabada de vir da IA nunca deve ser substituída por um
+    // template em branco — só pula essa passagem uma vez, logo após o preenchimento.
+    if (aiAcabouDePreencher.current) {
+      aiAcabouDePreencher.current = false;
+      return;
+    }
+
     if (data.st_grau === "3") {
       const isGerencial = String(data.id_motivo_associado) === "49";
 
       if (isGerencial) {
         // Template Gerencial (ID 49)
-        if (!data.ds_descricao || !data.ds_descricao.includes("Data da NRS:")) {
-          const template = `Nome completo: 
-Data de nascimento: 
-Número do atendimento: 
-Sexo: 
-Unidade de internação: 
-Convênio: 
-Telefone para contato: 
-Data da NRS: 
-Valor da NRS: 
-Data do diagnóstico: 
-Diagnóstico nutricional: 
+        if (eDescricaoDeTemplate(data.ds_descricao)) {
+          const template = `Nome completo:
+Data de nascimento:
+Número do atendimento:
+Sexo:
+Unidade de internação:
+Convênio:
+Telefone para contato:
+Data da NRS:
+Valor da NRS:
+Data do diagnóstico:
+Diagnóstico nutricional:
 Paciente em Terapia Nutricional? (Sim/Não): `;
           setData("ds_descricao", template);
         }
       } else {
         // Template Sisibranutro (ID 48 ou outros)
-        if (!data.ds_descricao || !data.ds_descricao.includes("Nome da Mãe:")) {
-          const template = `Setor*: 
-Leito*: 
-Nome Completo*: 
-Nome da Mãe: 
-Número do Atendimento*: 
-Convênio*: 
-Telefone*: 
-Sexo*: 
-Data de Admissão Hospitalar*: 
-Data de Admissão na EMTN*: 
-Data de Nascimento*: 
-Terapia Nutricional de Entrada*: 
-Diagnóstico*: 
-Especialidade*: 
-Motivo da Internação: 
-Diagnósticos Secundários: 
+        if (eDescricaoDeTemplate(data.ds_descricao)) {
+          const template = `Setor*:
+Leito*:
+Nome Completo*:
+Nome da Mãe:
+Número do Atendimento*:
+Convênio*:
+Telefone*:
+Sexo*:
+Data de Admissão Hospitalar*:
+Data de Admissão na EMTN*:
+Data de Nascimento*:
+Terapia Nutricional de Entrada*:
+Diagnóstico*:
+Especialidade*:
+Motivo da Internação:
+Diagnósticos Secundários:
 Comorbidades: `;
-          
+
           setData("ds_descricao", template);
         }
       }
+    } else if (data.st_grau === "2" && ["48", "49"].includes(String(data.id_motivo_associado))) {
+      // Problema em Cadastro de Paciente (Sisibranutro/Gerencial) — na maioria das
+      // vezes é troca do número de atendimento de um paciente já cadastrado.
+      if (eDescricaoDeTemplate(data.ds_descricao)) {
+        const template = `Nome completo do paciente:
+Número de atendimento (antigo):
+Número de atendimento (novo):
+Motivo da alteração: `;
+        setData("ds_descricao", template);
+      }
     } else {
-      // Se mudar para qualquer outra coisa (Melhoria, Problema, Relatório)
-      // E a descrição contiver algum dos templates de paciente, limpamos ela
-      if (data.ds_descricao && (data.ds_descricao.includes("Nome da Mãe:") || data.ds_descricao.includes("Data da NRS:"))) {
+      // Se mudar para qualquer outra coisa e a descrição contiver algum dos
+      // templates de paciente (sem conteúdo real digitado), limpamos ela.
+      if (data.ds_descricao && (data.ds_descricao.includes(MARCADOR_SISIBRANUTRO) || data.ds_descricao.includes(MARCADOR_GERENCIAL) || data.ds_descricao.includes(MARCADOR_ATENDIMENTO))) {
         setData("ds_descricao", "");
       }
     }
