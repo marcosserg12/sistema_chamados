@@ -6,10 +6,14 @@ import { Badge } from "@/Components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/Components/ui/select";
-import { FileText, Inbox, CheckCircle2, Clock, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { Button } from "@/Components/ui/button";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+} from "recharts";
+import { FileText, Inbox, CheckCircle2, Clock, ChevronLeft, ChevronRight, Calendar, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filters, tecnicos = [], tipos = [], modo }) {
+export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filters, tecnicos = [], tipos = [], modo, cargaPorTecnico = [] }) {
   const [status, setStatus] = useState(filters?.status || "todos");
   const [tecnico, setTecnico] = useState(filters?.tecnico || "todos");
   const [tipo, setTipo] = useState(filters?.tipo || "todos");
@@ -26,6 +30,18 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
     router.get("/relatorios", {
       modo: "personalizado", data_inicio: dataInicio, data_fim: dataFim, status, tecnico, tipo,
     }, { preserveState: true, preserveScroll: true });
+  };
+
+  const urlExportar = () => {
+    const params = new URLSearchParams({ status, tecnico, tipo });
+    if (personalizado) {
+      params.set("modo", "personalizado");
+      params.set("data_inicio", dataInicio);
+      params.set("data_fim", dataFim);
+    } else {
+      params.set("inicio", periodo.inicio);
+    }
+    return `/relatorios/exportar?${params.toString()}`;
   };
 
   useEffect(() => {
@@ -98,9 +114,14 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
               </div>
             )}
           </div>
-          <Badge className="bg-indigo-600 w-fit text-white px-3 py-1">
-            {isVisaoGeral ? "Visão Geral" : "Meus Chamados"}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge className="bg-indigo-600 w-fit text-white px-3 py-1">
+              {isVisaoGeral ? "Visão Geral" : "Meus Chamados"}
+            </Badge>
+            <Button asChild variant="outline" size="sm">
+              <a href={urlExportar()}><Download className="w-4 h-4 mr-1" /> Exportar PDF</a>
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -148,6 +169,25 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
           <KpiItem title="Resolvidos" value={kpis.resolvidos} icon={CheckCircle2} color="emerald" />
           <KpiItem title="Backlog (ainda em aberto)" value={kpis.backlog} icon={Clock} color="amber" />
         </div>
+
+        {isVisaoGeral && cargaPorTecnico.length > 0 && (
+          <Card className="dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm">
+            <CardHeader><CardTitle className="text-base">Carga por Técnico no Período</CardTitle></CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={cargaPorTecnico}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                    <Tooltip />
+                    <Bar dataKey="value" name="Chamados" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={32} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="dark:bg-slate-800 border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
           <CardHeader className="border-b border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 py-4">

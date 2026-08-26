@@ -95,6 +95,7 @@ const getNavigationGroups = (perfilId) => {
       items: [
         { name: "Visão Admin", href: "/dashboard/admin", icon: Shield, show: isAdmin || isSuperAdmin },
         { name: "Visão Técnico", href: "/dashboard/tecnico", icon: Wrench, show: isTecnico || isSuperAdmin },
+        { name: "Relatório Semanal", href: "/relatorios", icon: FileText, show: isAdmin || isTecnico || isSuperAdmin },
         // { name: "Visão Cliente", href: "/dashboard/cliente", icon: UserCircle, show: isAdmin || isSuperAdmin }, // Prompt indicou perfil 1 e 5
       ]
     }
@@ -428,7 +429,7 @@ function LayoutContent({ children }) {
                     menuCompacto ? "w-full h-11 px-0" : "w-full gap-2 h-11"
                   )}>
                     <Plus className="w-5 h-5" />
-                    {!menuCompacto && <span className="font-medium">Novo Chamado</span>}
+                    {!menuCompacto && <span className="font-bold font-display">Novo Chamado</span>}
                   </Button>
                 </Link>
               </TooltipTrigger>
@@ -448,7 +449,7 @@ function LayoutContent({ children }) {
             {filteredNavigation.map((group, groupIndex) => (
               <div key={group.title} className={cn(groupIndex > 0 && "mt-6")}>
                 {!menuCompacto && (
-                  <p className="px-3 mb-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  <p className="px-3 mb-2 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider font-display">
                     {group.title}
                   </p>
                 )}
@@ -697,8 +698,8 @@ function LayoutContent({ children }) {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-4xl bg-white dark:bg-slate-900 border-none shadow-2xl p-0 overflow-hidden rounded-2xl">
-                  <DialogHeader className="p-4 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white">
-                    <DialogTitle className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                  <DialogHeader className="p-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+                    <DialogTitle className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-2 font-display">
                       <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-md flex items-center justify-center">
                         <Info className="w-4 h-4 text-white" />
                       </div>

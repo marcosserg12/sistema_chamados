@@ -74,6 +74,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/chamados/reordenar-fila', [ChamadoController::class, 'reordenarFila'])->name('chamados.reordenar');
 
     Route::get('/relatorios', [App\Http\Controllers\RelatorioSemanalController::class, 'index'])->name('relatorios.index');
+    Route::get('/relatorios/exportar', [App\Http\Controllers\RelatorioSemanalController::class, 'export'])->name('relatorios.export');
 
     Route::get('/board', [KanbanController::class, 'index'])->name('kanban.index');
     Route::put('/api/kanban/move', [KanbanController::class, 'move'])->name('api.kanban.move');
