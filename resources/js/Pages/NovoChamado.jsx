@@ -104,11 +104,6 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   const [loadingSelects, setLoadingSelects] = useState({});
   const [localErrors, setLocalErrors] = useState({});
 
-  useEffect(() => {
-    console.log("[DEBUG-WATCH] id_tipo_chamado:", JSON.stringify(data.id_tipo_chamado), "| id_motivo_principal:", JSON.stringify(data.id_motivo_principal), "| id_motivo_associado:", JSON.stringify(data.id_motivo_associado), "| motivos.length:", motivos.length);
-    console.trace();
-  }, [data.id_tipo_chamado, data.id_motivo_principal, data.id_motivo_associado]);
-
   // ===== Abrir com IA (experimental) =====
   const [painelIA, setPainelIA] = useState(false);
   const [conversaIA, setConversaIA] = useState([]); // [{ papel: 'user'|'model', texto }]
@@ -516,15 +511,20 @@ Motivo da alteração: `;
               Preencha os detalhes abaixo para que a nossa equipa possa ajudar o mais rápido possível.
             </p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setPainelIA((v) => !v)}
-            className="border-indigo-200 dark:border-indigo-900 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 font-bold shrink-0"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            Abrir com IA
-          </Button>
+          <div className="relative shrink-0">
+            <span className="absolute -top-2.5 -right-2.5 z-10 bg-rose-500 text-white text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full shadow-md animate-pulse">
+              Novo
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPainelIA((v) => !v)}
+              className="border-indigo-200 dark:border-indigo-900 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 font-bold"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Abrir com IA
+            </Button>
+          </div>
         </div>
 
         {/* ================= PAINEL "ABRIR COM IA" (experimental) ================= */}
@@ -569,8 +569,8 @@ Motivo da alteração: `;
                 </div>
               )}
 
-              <div className="flex gap-2 items-center">
-                <Input
+              <div className="flex gap-2 items-end">
+                <Textarea
                   value={mensagemAtual}
                   onChange={(e) => setMensagemAtual(e.target.value)}
                   onKeyDown={(e) => {
@@ -580,10 +580,11 @@ Motivo da alteração: `;
                     }
                   }}
                   disabled={carregandoIA}
+                  rows={4}
                   placeholder={conversaIA.length === 0
                     ? "Ex: A impressora do financeiro não está imprimindo, aparece uma luz vermelha piscando."
-                    : "Digite sua resposta..."}
-                  className="h-12 bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-900 text-[15px]"
+                    : "Digite sua resposta... (Enter envia, Shift+Enter quebra linha)"}
+                  className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-900 text-[15px] resize-none"
                 />
                 <Button
                   type="button"
