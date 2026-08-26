@@ -6,6 +6,7 @@ use App\Models\ChatTecnico;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ChatTecnicoController extends Controller
 {
@@ -63,7 +64,12 @@ class ChatTecnicoController extends Controller
         ]);
 
         $chatWithUser = $chat->load('usuario:id_usuario,ds_nome,ds_foto');
-        \App\Events\NewTechChatMessage::dispatch($chatWithUser);
+
+        try {
+            \App\Events\NewTechChatMessage::dispatch($chatWithUser);
+        } catch (\Throwable $e) {
+            Log::warning('Erro ao transmitir mensagem do chat técnico: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,

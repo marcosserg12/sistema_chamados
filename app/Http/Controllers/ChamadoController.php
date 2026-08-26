@@ -411,7 +411,11 @@ class ChamadoController extends Controller
 
         // Carrega o usuário para enviar o objeto completo pelo socket
         $chatWithUser = $chatMessage->load('usuario:id_usuario,ds_nome,ds_foto');
-        \App\Events\NewChamadoChatMessage::dispatch($chatWithUser, $id);
+        try {
+            \App\Events\NewChamadoChatMessage::dispatch($chatWithUser, $id);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Erro ao transmitir mensagem do chat do chamado: ' . $e->getMessage());
+        }
 
         // Notifica a outra parte (Dono ou Técnico)
         $textoMensagem = $request->mensagem ?: ( $request->hasFile('arquivo') ? "Enviou um arquivo" : "" );
