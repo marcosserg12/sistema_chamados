@@ -601,25 +601,43 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
 
                       {/* Outros status: menos frequentes, ficam separados dos 3 principais */}
                       <div className="mt-3">
-                        <Select
-                          value={STATUS_SECUNDARIOS.includes(Number(chamado.st_status)) ? String(chamado.st_status) : undefined}
-                          onValueChange={(v) => {
-                            const opcao = STATUS_LIST.find((s) => String(s.value) === v);
-                            if (opcao) confirmStatusChange(opcao.value, opcao.label);
-                          }}
-                          disabled={loading}
-                        >
-                          <SelectTrigger className="w-full h-10 lg:h-11 bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 text-xs lg:text-sm font-semibold text-slate-500 dark:text-slate-400">
-                            <SelectValue placeholder="Outros status..." />
-                          </SelectTrigger>
-                          <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
-                            {STATUS_LIST.filter((s) => STATUS_SECUNDARIOS.includes(s.value)).map((s) => (
-                              <SelectItem key={s.value} value={String(s.value)} className="text-xs lg:text-sm font-medium">
-                                {s.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {(() => {
+                          const statusAtual = Number(chamado.st_status);
+                          const ativo = STATUS_SECUNDARIOS.includes(statusAtual);
+                          const coresAtivo = {
+                            [STATUS.AGUARDANDO_TESTE]: "bg-purple-500 text-white border-purple-500 shadow-lg shadow-purple-500/20",
+                            [STATUS.PAUSADO]: "bg-orange-500 text-white border-orange-500 shadow-lg shadow-orange-500/20",
+                            [STATUS.CANCELADO]: "bg-slate-400 text-white border-slate-400 shadow-lg shadow-slate-400/20",
+                          };
+                          return (
+                            <Select
+                              value={ativo ? String(statusAtual) : undefined}
+                              onValueChange={(v) => {
+                                const opcao = STATUS_LIST.find((s) => String(s.value) === v);
+                                if (opcao) confirmStatusChange(opcao.value, opcao.label);
+                              }}
+                              disabled={loading}
+                            >
+                              <SelectTrigger
+                                className={cn(
+                                  "w-full h-10 lg:h-11 text-xs lg:text-sm font-semibold border-2 transition-all",
+                                  ativo
+                                    ? coresAtivo[statusAtual]
+                                    : "bg-white dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400"
+                                )}
+                              >
+                                <SelectValue placeholder="Outros status..." />
+                              </SelectTrigger>
+                              <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
+                                {STATUS_LIST.filter((s) => STATUS_SECUNDARIOS.includes(s.value)).map((s) => (
+                                  <SelectItem key={s.value} value={String(s.value)} className="text-xs lg:text-sm font-medium">
+                                    {s.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          );
+                        })()}
                       </div>
                     </div>
 

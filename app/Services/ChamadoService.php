@@ -177,7 +177,7 @@ class ChamadoService
                 'dt_update' => now()
             ]);
 
-            // Se mudou para EM ANDAMENTO (1): assume a responsabilidade automaticamente se não houver técnico
+            // Se mudou para EM ANDAMENTO (1): assume a responsabilidade automaticamente
             if ($novoStatus == 1) {
                 $this->atribuirTecnico($chamado, $user->id_usuario, $user, false);
             }
@@ -190,6 +190,13 @@ class ChamadoService
                     'id_usuario_desginado' => null,
                     'dt_update' => now()
                 ]);
+            }
+            // Qualquer outro status (Resolvido, Aguardando Teste, Pausado, Cancelado):
+            // se ninguém pegou o chamado ainda, quem mudou o status agora vira o
+            // responsável — senão o chamado fica "resolvido" mas sem técnico
+            // registrado, mesmo quem foi que resolveu direto do Aberto.
+            else if (!$chamado->relacionamentoUsuarios()->exists()) {
+                $this->atribuirTecnico($chamado, $user->id_usuario, $user, false);
             }
 
             $this->dispararNotificacaoStatus($chamado, $user, $novoStatus);
