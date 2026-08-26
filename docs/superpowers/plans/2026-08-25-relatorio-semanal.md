@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a `/relatorios` page that shows what happened in the current Tuesday-to-Tuesday work cycle (new tickets, resolved tickets, backlog, workload), scoped per role (general view for Admin/Super Admin, locked-to-self view for Técnico), filterable by status/técnico/tipo, and exportable to Excel and PDF.
+**Goal:** Add a `/relatorios` page that shows what happened in the current Tuesday-to-Tuesday work cycle (new tickets, resolved tickets, backlog, workload), scoped per role (general view for Admin/Super Admin, locked-to-self view for Técnico), filterable by status/técnico/tipo, and exportable to PDF.
 
-**Architecture:** A new `RelatorioSemanalController` reuses the existing `Chamado` model's visibility scopes and adds period-based scopes. A pure, DB-free `PeriodoRelatorio` helper computes the Tuesday-anchored cycle. A new Inertia page (`Relatorios.jsx`) mirrors the existing `DashboardAdmin.jsx` structure. Export is handled by two small dedicated classes (`maatwebsite/excel`, `barryvdh/laravel-dompdf`) fed by the same filtered query the page uses.
+**Architecture:** A new `RelatorioSemanalController` reuses the existing `Chamado` model's visibility scopes and adds period-based scopes. A pure, DB-free `PeriodoRelatorio` helper computes the Tuesday-anchored cycle. A new Inertia page (`Relatorios.jsx`) mirrors the existing `DashboardAdmin.jsx` structure. Export is handled by a PDF view (`barryvdh/laravel-dompdf`) fed by the same filtered query the page uses.
 
-**Tech Stack:** Laravel 12 / Inertia + React (JSX) / Carbon / recharts / shadcn-style UI components already in the repo / `maatwebsite/excel` / `barryvdh/laravel-dompdf`.
+**Tech Stack:** Laravel 12 / Inertia + React (JSX) / Carbon / recharts / shadcn-style UI components already in the repo / `barryvdh/laravel-dompdf`.
 
 **Spec:** `docs/superpowers/specs/2026-08-25-relatorio-semanal-design.md`
 
@@ -22,41 +22,39 @@
 
 ---
 
-### Task 1: Instalar dependências de exportação (Excel e PDF)
+### Task 1: Instalar dependência de exportação (PDF)
 
 **Files:**
 - Modify: `composer.json` (via `composer require`, não editar manualmente)
-- Create (gerado pelo publish): `config/excel.php`, `config/dompdf.php`
+- Create (gerado pelo publish): `config/dompdf.php`
 
 **Interfaces:**
-- Produces: pacotes `maatwebsite/excel` (classe base `Maatwebsite\Excel\Concerns\FromCollection` etc., usada na Task 8) e `barryvdh/laravel-dompdf` (facade `Pdf`/`Barryvdh\DomPDF\Facade\Pdf`, usada na Task 8).
+- Produces: pacote `barryvdh/laravel-dompdf` (facade `Pdf`/`Barryvdh\DomPDF\Facade\Pdf`, usada na Task 9).
 
-- [ ] **Step 1: Instalar os pacotes via composer**
+- [ ] **Step 1: Instalar o pacote via composer**
 
 Run:
 ```bash
-composer require maatwebsite/excel
 composer require barryvdh/laravel-dompdf
 ```
 
-- [ ] **Step 2: Publicar as configurações dos pacotes**
+- [ ] **Step 2: Publicar a configuração do pacote**
 
 Run:
 ```bash
-php artisan vendor:publish --provider="Maatwebsite\Excel\ExcelServiceProvider"
 php artisan vendor:publish --provider="Barryvdh\DomPDF\ServiceProvider"
 ```
 
-- [ ] **Step 3: Verificar que os pacotes foram registrados corretamente**
+- [ ] **Step 3: Verificar que o pacote foi registrado corretamente**
 
-Run: `php artisan about | findstr /I "excel dompdf"` (ou `grep -i "excel\|dompdf"` no bash)
-Expected: nenhum erro ao rodar `php artisan about` (o comando roda por completo) e os arquivos `config/excel.php` e `config/dompdf.php` existem.
+Run: `php artisan about | findstr /I "dompdf"` (ou `grep -i "dompdf"` no bash)
+Expected: nenhum erro ao rodar `php artisan about` (o comando roda por completo) e o arquivo `config/dompdf.php` existe.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add composer.json composer.lock config/excel.php config/dompdf.php
-git commit -m "chore: add maatwebsite/excel and barryvdh/laravel-dompdf for report export"
+git add composer.json composer.lock config/dompdf.php
+git commit -m "chore: add barryvdh/laravel-dompdf for report export"
 ```
 
 ---
@@ -931,18 +929,17 @@ git commit -m "feat: add weekly report link to sidebar navigation"
 
 ---
 
-### Task 9: Exportação em Excel e PDF
+### Task 9: Exportação em PDF
 
 **Files:**
-- Create: `app/Exports/ChamadosRelatorioExport.php`
 - Create: `resources/views/relatorios/pdf.blade.php`
 - Modify: `app/Http/Controllers/RelatorioSemanalController.php`
 - Modify: `routes/web.php`
 - Modify: `resources/js/Pages/Relatorios.jsx`
 
 **Interfaces:**
-- Consumes: `maatwebsite/excel` (Task 1), a mesma lógica de montagem de `$tabela` do `index()` (Task 4).
-- Produces: rota `relatorios.export` (`GET /relatorios/exportar?formato=xlsx|pdf&...filtros`).
+- Consumes: `barryvdh/laravel-dompdf` (Task 1), a mesma lógica de montagem de `$tabela` do `index()` (Task 4).
+- Produces: rota `relatorios.export` (`GET /relatorios/exportar?...filtros`).
 
 - [ ] **Step 1: Extrair a montagem da tabela pra um método reutilizável**
 
@@ -1078,53 +1075,7 @@ In `app/Http/Controllers/RelatorioSemanalController.php`, substituir **todo o co
     }
 ```
 
-- [ ] **Step 2: Criar a classe de exportação Excel**
-
-Create `app/Exports/ChamadosRelatorioExport.php`:
-
-```php
-<?php
-
-namespace App\Exports;
-
-use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
-
-class ChamadosRelatorioExport implements FromCollection, WithHeadings, WithMapping
-{
-    public function __construct(private Collection $linhas)
-    {
-    }
-
-    public function collection()
-    {
-        return $this->linhas;
-    }
-
-    public function headings(): array
-    {
-        return ['ID', 'Título', 'Tipo', 'Empresa', 'Técnico', 'Status', 'Categoria', 'Data'];
-    }
-
-    public function map($linha): array
-    {
-        return [
-            $linha['id'],
-            $linha['titulo'],
-            $linha['tipo'],
-            $linha['empresa'],
-            $linha['tecnico'],
-            $linha['status'],
-            $linha['categoria'],
-            $linha['data_referencia'],
-        ];
-    }
-}
-```
-
-- [ ] **Step 3: Criar a view do PDF**
+- [ ] **Step 2: Criar a view do PDF**
 
 Create `resources/views/relatorios/pdf.blade.php`:
 
@@ -1172,7 +1123,7 @@ Create `resources/views/relatorios/pdf.blade.php`:
 </html>
 ```
 
-- [ ] **Step 4: Adicionar o método `export()` e a rota**
+- [ ] **Step 3: Adicionar o método `export()` e a rota**
 
 In `app/Http/Controllers/RelatorioSemanalController.php`, adicionar:
 
@@ -1186,24 +1137,15 @@ In `app/Http/Controllers/RelatorioSemanalController.php`, adicionar:
         }
 
         $dados = $this->montarRelatorio($request, $user);
-        $formato = $request->input('formato', 'xlsx');
-
         $nomeArquivo = 'relatorio-semanal-' . $dados['periodo']['inicio']->format('Y-m-d');
 
-        if ($formato === 'pdf') {
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('relatorios.pdf', [
-                'linhas' => $dados['tabela'],
-                'periodoInicio' => $dados['periodo']['inicio']->format('d/m/Y'),
-                'periodoFim' => $dados['periodo']['fim']->copy()->subDay()->format('d/m/Y'),
-            ]);
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('relatorios.pdf', [
+            'linhas' => $dados['tabela'],
+            'periodoInicio' => $dados['periodo']['inicio']->format('d/m/Y'),
+            'periodoFim' => $dados['periodo']['fim']->copy()->subDay()->format('d/m/Y'),
+        ]);
 
-            return $pdf->download("{$nomeArquivo}.pdf");
-        }
-
-        return \Maatwebsite\Excel\Facades\Excel::download(
-            new \App\Exports\ChamadosRelatorioExport($dados['tabela']),
-            "{$nomeArquivo}.xlsx"
-        );
+        return $pdf->download("{$nomeArquivo}.pdf");
     }
 ```
 
@@ -1213,7 +1155,7 @@ In `routes/web.php`, logo abaixo da rota `relatorios.index` criada na Task 4:
     Route::get('/relatorios/exportar', [App\Http\Controllers\RelatorioSemanalController::class, 'export'])->name('relatorios.export');
 ```
 
-- [ ] **Step 5: Botões de exportação no frontend**
+- [ ] **Step 4: Botão de exportação no frontend**
 
 In `resources/js/Pages/Relatorios.jsx`, importar `Button` e `Download`:
 
@@ -1224,11 +1166,11 @@ import { Button } from "@/Components/ui/button";
 import { FileText, Inbox, CheckCircle2, Clock, ChevronLeft, ChevronRight, Calendar, Download } from "lucide-react";
 ```
 
-Adicionar uma função que monta a URL de exportação preservando os filtros/período atuais, e os botões no cabeçalho (ao lado do Badge):
+Adicionar uma função que monta a URL de exportação preservando os filtros/período atuais, e o botão no cabeçalho (ao lado do Badge):
 
 ```jsx
-  const urlExportar = (formato) => {
-    const params = new URLSearchParams({ status, tecnico, tipo, formato });
+  const urlExportar = () => {
+    const params = new URLSearchParams({ status, tecnico, tipo });
     if (personalizado) {
       params.set("modo", "personalizado");
       params.set("data_inicio", dataInicio);
@@ -1243,26 +1185,20 @@ Adicionar uma função que monta a URL de exportação preservando os filtros/pe
 E, no JSX, logo depois do `<Badge>` no cabeçalho:
 
 ```jsx
-          <div className="flex gap-2">
-            <Button asChild variant="outline" size="sm">
-              <a href={urlExportar("xlsx")}><Download className="w-4 h-4 mr-1" /> Excel</a>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <a href={urlExportar("pdf")}><Download className="w-4 h-4 mr-1" /> PDF</a>
-            </Button>
-          </div>
+          <Button asChild variant="outline" size="sm">
+            <a href={urlExportar()}><Download className="w-4 h-4 mr-1" /> Exportar PDF</a>
+          </Button>
 ```
 
-- [ ] **Step 6: Verificação manual**
+- [ ] **Step 5: Verificação manual**
 
 Em `/relatorios`:
-1. Clicar em "Excel". Esperado: baixa um `.xlsx` que abre corretamente, com as mesmas linhas visíveis na tela.
-2. Clicar em "PDF". Esperado: baixa um `.pdf` legível, com o período correto no topo.
-3. Trocar um filtro (ex: Status) e exportar de novo. Esperado: o arquivo reflete o filtro aplicado, não a tabela inteira.
+1. Clicar em "Exportar PDF". Esperado: baixa um `.pdf` legível, com o período correto no topo e as mesmas linhas visíveis na tela.
+2. Trocar um filtro (ex: Status) e exportar de novo. Esperado: o arquivo reflete o filtro aplicado, não a tabela inteira.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add app/Http/Controllers/RelatorioSemanalController.php app/Exports/ChamadosRelatorioExport.php resources/views/relatorios/pdf.blade.php routes/web.php resources/js/Pages/Relatorios.jsx
-git commit -m "feat: add Excel and PDF export to weekly report"
+git add app/Http/Controllers/RelatorioSemanalController.php resources/views/relatorios/pdf.blade.php routes/web.php resources/js/Pages/Relatorios.jsx
+git commit -m "feat: add PDF export to weekly report"
 ```
