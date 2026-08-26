@@ -72,6 +72,12 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   const isFirstRender = React.useRef(true);
   const aiAcabouDePreencher = React.useRef(false);
   const preenchendoComIARef = React.useRef(false);
+  // A IA já buscou motivos/detalhes ela mesma antes de aplicar — os efeitos
+  // em cascata abaixo não precisam buscar de novo nesse ciclo (buscar duas
+  // vezes seguidas, uma vez pela IA e de novo pelo efeito, era o que
+  // quebrava a tela com o Select montado).
+  const pularBuscaMotivos = React.useRef(false);
+  const pularBuscaDetalhes = React.useRef(false);
 
   const { data, setData, post, processing } = useForm({
     ds_titulo: "",
@@ -182,11 +188,26 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
         return;
       }
 
-      // Não busca motivo/detalhe aqui: os efeitos em cascata do formulário já
-      // fazem isso sozinhos assim que id_tipo_chamado/id_motivo_principal
-      // mudam abaixo. Buscar de novo aqui derrubava a tela (dois setMotivos
-      // seguidos trocando a lista enquanto o Select ainda está de pé
-      // quebravam o Portal do Radix).
+      // Busca as listas de motivo e detalhe NÓS MESMOS, em sequência (tipo
+      // -> motivos -> detalhes), antes de aplicar tudo em "data". Os efeitos
+      // em cascata (abaixo) buscariam a mesma coisa de novo assim que
+      // "data" mudar — duas buscas encadeadas trocando a lista do Select
+      // quase ao mesmo tempo é o que derrubava a tela antes — então eles são
+      // avisados pra pular essa passagem específica.
+      const motivosRes = await axios.get(`/api/motivos?id_tipo_chamado=${tipoId}`);
+      if (minhaSessao !== sessaoIARef.current) return;
+      setMotivos(motivosRes.data);
+
+      const detalhesRes = await axios.get(
+        motivoId === "6"
+          ? `/api/detalhes-motivo?id_motivo=${motivoId}&id_empresa=${data.id_empresa || ""}`
+          : `/api/detalhes-motivo?id_motivo=${motivoId}`
+      );
+      if (minhaSessao !== sessaoIARef.current) return;
+      setDetalhes(detalhesRes.data);
+
+      pularBuscaMotivos.current = true;
+      pularBuscaDetalhes.current = true;
       aiAcabouDePreencher.current = true;
       // Passa um objeto direto (não uma função de atualização) — o React
       // pode invocar uma função de atualização de estado mais de uma vez,
@@ -287,7 +308,9 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   }, [data.id_empresa]);
 
   useEffect(() => {
-    if (data.id_tipo_chamado) {
+    if (pularBuscaMotivos.current) {
+      pularBuscaMotivos.current = false;
+    } else if (data.id_tipo_chamado) {
       setLoadingSelects(p => ({ ...p, motivo: true }));
       setLocalErrors(prev => ({ ...prev, id_tipo_chamado: null }));
       axios.get(`/api/motivos?id_tipo_chamado=${data.id_tipo_chamado}`)
@@ -303,7 +326,9 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   }, [data.id_tipo_chamado]);
 
   useEffect(() => {
-    if (data.id_motivo_principal) {
+    if (pularBuscaDetalhes.current) {
+      pularBuscaDetalhes.current = false;
+    } else if (data.id_motivo_principal) {
       setLoadingSelects(p => ({ ...p, detalhe: true }));
       setLocalErrors(prev => ({ ...prev, id_motivo_principal: null }));
       const url = data.id_motivo_principal === "6"
