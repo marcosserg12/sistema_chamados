@@ -54,6 +54,7 @@ import {
 } from "@/Components/ui/dialog";
 import { cn } from "@/lib/utils";
 import TechChat from "@/Components/TechChat";
+import { Toaster } from "@/Components/ui/sonner";
 
 // Flag global para persistir o estado de desbloqueio de áudio entre navegações SPA (Inertia)
 let isAudioUnlockedGlobal = false;
@@ -927,6 +928,7 @@ export default function Layout({ children }) {
       <LayoutContent>
         {children}
       </LayoutContent>
+      <Toaster richColors closeButton />
     </ThemeProvider>
   );
 }
