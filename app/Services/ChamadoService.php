@@ -10,6 +10,7 @@ use App\Notifications\ChamadoCriado;
 use App\Support\StatusChamado;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ChamadoService
@@ -62,6 +63,24 @@ class ChamadoService
 
             return $chamado;
         });
+    }
+
+    /**
+     * Envia uma notificação sem deixar uma falha de infraestrutura (broadcast/
+     * mail fora do ar, etc.) derrubar a operação principal (criar chamado,
+     * mudar status, atribuir técnico). A notificação é best-effort: se falhar,
+     * só registra no log.
+     */
+    public function notificarComSeguranca($notifiable, $notification): void
+    {
+        try {
+            $notifiable->notify($notification);
+        } catch (\Throwable $e) {
+            Log::warning('Falha ao enviar notificação: ' . $e->getMessage(), [
+                'notification' => get_class($notification),
+                'notifiable_id' => $notifiable->id_usuario ?? null,
+            ]);
+        }
     }
 
     /**
@@ -122,7 +141,7 @@ class ChamadoService
         foreach ($tecnicos as $tecnico) {
             $prefs = $tecnico->preferencias ?? [];
             if (($prefs['evt_novo_chamado'] ?? true) !== false) {
-                $tecnico->notify(new ChamadoCriado($chamado));
+                $this->notificarComSeguranca($tecnico, new ChamadoCriado($chamado));
             }
             $this->whatsapp->notifyUser($tecnico, $msgWhatsApp);
         }
@@ -222,14 +241,14 @@ class ChamadoService
         if ($chamado->id_usuario != $user->id_usuario) {
             $dono = User::find($chamado->id_usuario);
             if ($dono) {
-                $dono->notify($notif);
+                $this->notificarComSeguranca($dono, $notif);
                 $this->whatsapp->notifyUser($dono, $msg);
             }
         }
 
         $tecnico = $chamado->tecnico;
         if ($tecnico && $tecnico->id_usuario != $user->id_usuario) {
-            $tecnico->notify($notif);
+            $this->notificarComSeguranca($tecnico, $notif);
             $this->whatsapp->notifyUser($tecnico, $msg);
         }
     }
@@ -244,7 +263,7 @@ class ChamadoService
                "📌 *Assunto:* {$chamado->ds_titulo}\n\n".
                "🔗 *Acesse em:* " . config('app.url') . "/chamados/{$chamado->id_chamado}";
 
-        $tecnico->notify(new \App\Notifications\ChamadoAtribuido($chamado, $user));
+        $this->notificarComSeguranca($tecnico, new \App\Notifications\ChamadoAtribuido($chamado, $user));
         $this->whatsapp->notifyUser($tecnico, $msg);
     }
 }

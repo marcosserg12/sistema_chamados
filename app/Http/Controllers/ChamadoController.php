@@ -335,12 +335,12 @@ class ChamadoController extends Controller
 
         if ($chamado->id_usuario != $user->id_usuario) {
             $dono = \App\Models\User::find($chamado->id_usuario);
-            if ($dono) { $dono->notify($notification); $whatsapp->notifyUser($dono, $msg); }
+            if ($dono) { $this->chamadoService->notificarComSeguranca($dono, $notification); $whatsapp->notifyUser($dono, $msg); }
         }
 
         $tecnico = $chamado->tecnico;
         if ($tecnico && $tecnico->id_usuario != $user->id_usuario) {
-            $tecnico->notify($notification); $whatsapp->notifyUser($tecnico, $msg);
+            $this->chamadoService->notificarComSeguranca($tecnico, $notification); $whatsapp->notifyUser($tecnico, $msg);
         }
     }
 
@@ -407,17 +407,17 @@ class ChamadoController extends Controller
         if ($isTecnicoResponsavel && $chamado->id_usuario != $user->id_usuario) {
             $dono = \App\Models\User::find($chamado->id_usuario);
             if ($dono) {
-                $dono->notify($notification);
+                $this->chamadoService->notificarComSeguranca($dono, $notification);
                 $whatsappService->notifyUser($dono, $msgWhatsAppChat);
             }
-        } 
+        }
         // Se quem enviou foi o dono, notifica o técnico
         else if ($isSolicitante) {
             $tecnicoRel = \App\Models\RelacaoChamadoUsuario::where('id_chamado', $id)->first();
             if ($tecnicoRel && $tecnicoRel->id_usuario != $user->id_usuario) {
                 $tecnicoNotif = \App\Models\User::find($tecnicoRel->id_usuario);
                 if ($tecnicoNotif) {
-                    $tecnicoNotif->notify($notification);
+                    $this->chamadoService->notificarComSeguranca($tecnicoNotif, $notification);
                     $whatsappService->notifyUser($tecnicoNotif, $msgWhatsAppChat);
                 }
             }
