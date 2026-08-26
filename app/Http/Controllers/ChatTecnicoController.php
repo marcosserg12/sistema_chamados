@@ -58,7 +58,7 @@ class ChatTecnicoController extends Controller
 
         $chat = ChatTecnico::create([
             'id_usuario' => auth()->user()->id_usuario,
-            'ds_mensagem' => $request->mensagem,
+            'ds_mensagem' => $request->mensagem ?? '',
             'ds_caminho_arquivo' => $caminhoArquivo,
             'dt_envio' => now()
         ]);

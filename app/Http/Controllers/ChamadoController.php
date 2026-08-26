@@ -404,7 +404,7 @@ class ChamadoController extends Controller
         $chatMessage = ChatChamado::create([
             'id_chamado' => $id,
             'id_usuario' => $user->id_usuario,
-            'ds_mensagem' => $request->mensagem,
+            'ds_mensagem' => $request->mensagem ?? '',
             'ds_caminho_arquivo' => $caminhoArquivo,
             'dt_envio' => now()
         ]);
