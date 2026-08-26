@@ -74,6 +74,14 @@ class RelatorioSemanalController extends Controller
             ];
         });
 
+        $tecnicos = $user->id_perfil === 4
+            ? []
+            : \App\Models\User::where('id_perfil', 4)->where('st_ativo', 'A')
+                ->orderBy('ds_nome')->get(['id_usuario', 'ds_nome']);
+
+        $tipos = \App\Models\TipoChamado::where('st_ativo', 'A')
+            ->orderBy('ds_tipo_chamado')->get(['id_tipo_chamado', 'ds_tipo_chamado']);
+
         return Inertia::render('Relatorios', [
             'periodo' => [
                 'inicio' => $periodo['inicio']->toDateString(),
@@ -87,6 +95,8 @@ class RelatorioSemanalController extends Controller
             'tabela' => $tabela,
             'isVisaoGeral' => $user->id_perfil !== 4,
             'filters' => $filters,
+            'tecnicos' => $tecnicos,
+            'tipos' => $tipos,
         ]);
     }
 

@@ -1,12 +1,32 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, Head, router } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card";
 import { Badge } from "@/Components/ui/badge";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/Components/ui/select";
 import { FileText, Inbox, CheckCircle2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral }) {
+export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filters, tecnicos = [], tipos = [] }) {
+  const [status, setStatus] = useState(filters?.status || "todos");
+  const [tecnico, setTecnico] = useState(filters?.tecnico || "todos");
+  const [tipo, setTipo] = useState(filters?.tipo || "todos");
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    router.get("/relatorios", { inicio: periodo.inicio, status, tecnico, tipo }, {
+      preserveState: true,
+      preserveScroll: true,
+      replace: true,
+    });
+  }, [status, tecnico, tipo]);
+
   return (
     <AppLayout>
       <Head title="Relatório Semanal" />
@@ -25,6 +45,46 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral }) {
           <Badge className="bg-indigo-600 w-fit text-white px-3 py-1">
             {isVisaoGeral ? "Visão Geral" : "Meus Chamados"}
           </Badge>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="w-full sm:w-[160px] h-10 bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/60">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Status</SelectItem>
+              <SelectItem value="0">Aberto</SelectItem>
+              <SelectItem value="1">Em Andamento</SelectItem>
+              <SelectItem value="9">Resolvido</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {isVisaoGeral && (
+            <Select value={tecnico} onValueChange={setTecnico}>
+              <SelectTrigger className="w-full sm:w-[200px] h-10 bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/60">
+                <SelectValue placeholder="Técnico" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os Técnicos</SelectItem>
+                {tecnicos.map((t) => (
+                  <SelectItem key={t.id_usuario} value={String(t.id_usuario)}>{t.ds_nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          <Select value={tipo} onValueChange={setTipo}>
+            <SelectTrigger className="w-full sm:w-[200px] h-10 bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/60">
+              <SelectValue placeholder="Tipo de Chamado" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Tipos</SelectItem>
+              {tipos.map((t) => (
+                <SelectItem key={t.id_tipo_chamado} value={String(t.id_tipo_chamado)}>{t.ds_tipo_chamado}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
