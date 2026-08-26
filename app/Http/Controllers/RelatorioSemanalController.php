@@ -56,10 +56,18 @@ class RelatorioSemanalController extends Controller
         $dados = $this->montarRelatorio($request, $user);
         $nomeArquivo = 'relatorio-semanal-' . $dados['periodo']['inicio']->format('Y-m-d');
 
+        $logoPath = public_path('images/grupo_ibra.png');
+        $logoBase64 = file_exists($logoPath)
+            ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+            : null;
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('relatorios.pdf', [
             'linhas' => $dados['tabela'],
+            'kpis' => $dados['kpis'],
+            'cargaPorTecnico' => $dados['cargaPorTecnico'],
             'periodoInicio' => $dados['periodo']['inicio']->format('d/m/Y'),
             'periodoFim' => $dados['periodo']['fim']->copy()->subDay()->format('d/m/Y'),
+            'logoBase64' => $logoBase64,
         ]);
 
         return $pdf->download("{$nomeArquivo}.pdf");
@@ -118,21 +126,34 @@ class RelatorioSemanalController extends Controller
                 ->get();
         }
 
-        $chamados = Chamado::whereIn('id_chamado', $idsPeriodo)
+        $query = Chamado::whereIn('id_chamado', $idsPeriodo)
             ->with([
                 'tipoChamado:id_tipo_chamado,ds_tipo_chamado',
-                'empresa:id_empresa,ds_empresa',
+                'motivoPrincipal:id_motivo_principal,ds_descricao',
+                'motivoAssociado:id_motivo_associado,ds_descricao_motivo',
                 'tecnico',
                 'historicosStatus' => function ($q) use ($periodo) {
                     $q->where('st_status', 9)
                         ->whereBetween('dt_update', [$periodo['inicio'], $periodo['fim']])
                         ->orderByDesc('dt_update');
                 },
-            ])
-            ->orderByDesc('dt_data_chamado')
-            ->get();
+            ]);
 
-        $tabela = $chamados->map(function (Chamado $c) use ($novosIds) {
+        // Visão geral (Admin/Super Admin): ordem alfabética pelo título, com os
+        // resolvidos sempre depois dos abertos/em andamento. Visão do Técnico:
+        // mantém a ordem cronológica (mais recentes primeiro).
+        if ($user->id_perfil === 4) {
+            $query->orderByDesc('dt_data_chamado');
+        } else {
+            $query->orderByRaw('CASE WHEN st_status = 9 THEN 1 ELSE 0 END')
+                ->orderBy('ds_titulo');
+        }
+
+        $chamados = $query->get();
+
+        $grauLabels = [1 => 'Melhoria', 2 => 'Problema', 3 => 'Cadastro de Paciente', 4 => 'Relatório'];
+
+        $tabela = $chamados->map(function (Chamado $c) use ($novosIds, $grauLabels) {
             $ehNovo = $novosIds->contains($c->id_chamado);
             $resolvidoEm = optional($c->historicosStatus->first())->dt_update;
 
@@ -140,7 +161,9 @@ class RelatorioSemanalController extends Controller
                 'id' => $c->id_chamado,
                 'titulo' => $c->ds_titulo,
                 'tipo' => $c->tipoChamado->ds_tipo_chamado ?? '-',
-                'empresa' => $c->empresa->ds_empresa ?? '-',
+                'motivo' => $c->motivoPrincipal->ds_descricao ?? '-',
+                'detalhe' => $c->motivoAssociado->ds_descricao_motivo ?? '-',
+                'solicitacao' => $grauLabels[(int) $c->st_grau] ?? '-',
                 'tecnico' => $c->tecnico->ds_nome ?? 'Aguardando',
                 'status' => match ((int) $c->st_status) {
                     0 => 'Aberto', 1 => 'Em Andamento', 9 => 'Resolvido', default => 'Outro',

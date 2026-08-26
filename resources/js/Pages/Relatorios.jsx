@@ -200,7 +200,9 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
                   <th className="px-6 py-3 font-semibold">ID</th>
                   <th className="px-6 py-3 font-semibold">Título</th>
                   <th className="px-6 py-3 font-semibold">Tipo</th>
-                  <th className="px-6 py-3 font-semibold">Empresa</th>
+                  <th className="px-6 py-3 font-semibold">Motivo</th>
+                  <th className="px-6 py-3 font-semibold">Detalhe</th>
+                  <th className="px-6 py-3 font-semibold">Solicitação</th>
                   <th className="px-6 py-3 font-semibold">Técnico</th>
                   <th className="px-6 py-3 font-semibold">Status</th>
                   <th
@@ -214,7 +216,7 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                 {tabela.length === 0 ? (
-                  <tr><td colSpan="8" className="text-center py-8 text-slate-400">Nenhum chamado neste período.</td></tr>
+                  <tr><td colSpan="10" className="text-center py-8 text-slate-400">Nenhum chamado neste período.</td></tr>
                 ) : (
                   tabela.map((c) => (
                     <tr
@@ -225,7 +227,9 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
                       <td className="px-6 py-4 font-mono text-xs text-slate-500">#{c.id}</td>
                       <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200 truncate max-w-[260px]" title={c.titulo}>{c.titulo}</td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{c.tipo}</td>
-                      <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{c.empresa}</td>
+                      <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{c.motivo}</td>
+                      <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{c.detalhe}</td>
+                      <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{c.solicitacao}</td>
                       <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{c.tecnico}</td>
                       <td className="px-6 py-4">
                         <span className={cn("text-xs font-medium px-2 py-0.5 rounded",
