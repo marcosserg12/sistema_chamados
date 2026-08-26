@@ -92,6 +92,11 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   const [loadingSelects, setLoadingSelects] = useState({});
   const [localErrors, setLocalErrors] = useState({});
 
+  useEffect(() => {
+    console.log("[DEBUG-WATCH] id_tipo_chamado:", JSON.stringify(data.id_tipo_chamado), "| id_motivo_principal:", JSON.stringify(data.id_motivo_principal), "| id_motivo_associado:", JSON.stringify(data.id_motivo_associado), "| motivos.length:", motivos.length);
+    console.trace();
+  }, [data.id_tipo_chamado, data.id_motivo_principal, data.id_motivo_associado]);
+
   // ===== Abrir com IA (experimental) =====
   const [painelIA, setPainelIA] = useState(false);
   const [conversaIA, setConversaIA] = useState([]); // [{ papel: 'user'|'model', texto }]
@@ -145,9 +150,19 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
         return;
       }
 
-      const tipoId = String(res.data.id_tipo_chamado);
-      const motivoId = String(res.data.id_motivo_principal);
-      const detalheId = String(res.data.id_motivo_associado);
+      const tipoId = String(res.data.id_tipo_chamado ?? "");
+      const motivoId = String(res.data.id_motivo_principal ?? "");
+      const detalheId = String(res.data.id_motivo_associado ?? "");
+
+      if (!tipoId || !motivoId || !detalheId) {
+        // Nunca sobrescreve um preenchimento bom com uma resposta incompleta
+        // — título/descrição têm fallback pro valor anterior, mas tipo/
+        // motivo/detalhe não tinham, e uma resposta vazia zerava esses
+        // campos mesmo depois de um preenchimento correto.
+        console.warn("[IA] classificação incompleta, ignorando:", res.data);
+        toast.error("A IA não retornou uma classificação completa. Tente novamente.", { duration: 8000 });
+        return;
+      }
 
       // Não busca motivo/detalhe aqui: os efeitos em cascata do formulário já
       // fazem isso sozinhos assim que id_tipo_chamado/id_motivo_principal
@@ -161,7 +176,7 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
         id_tipo_chamado: tipoId,
         id_motivo_principal: motivoId,
         id_motivo_associado: detalheId,
-        st_grau: res.data.st_grau ? String(res.data.st_grau) : "",
+        st_grau: res.data.st_grau ? String(res.data.st_grau) : prev.st_grau,
         ds_descricao: res.data.descricao || texto,
       }));
 
