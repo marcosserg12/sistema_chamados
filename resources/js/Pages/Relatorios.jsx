@@ -203,7 +203,12 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
                   <th className="px-6 py-3 font-semibold">Empresa</th>
                   <th className="px-6 py-3 font-semibold">Técnico</th>
                   <th className="px-6 py-3 font-semibold">Status</th>
-                  <th className="px-6 py-3 font-semibold">Categoria</th>
+                  <th
+                    className="px-6 py-3 font-semibold cursor-help"
+                    title="Indica por que o chamado entrou neste relatório: foi aberto durante o período, ou é um chamado mais antigo que só foi resolvido durante o período. Não é o status atual (isso já aparece na coluna Status)."
+                  >
+                    Categoria
+                  </th>
                   <th className="px-6 py-3 font-semibold">Data</th>
                 </tr>
               </thead>
@@ -231,7 +236,7 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
                       </td>
                       <td className="px-6 py-4">
                         <span className={cn("text-xs font-bold px-2 py-0.5 rounded",
-                          c.categoria === "Novo" ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300" : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                          c.categoria === "Aberto no período" ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300" : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
                         )}>{c.categoria}</span>
                       </td>
                       <td className="px-6 py-4 text-xs text-slate-500">{c.data_referencia}</td>

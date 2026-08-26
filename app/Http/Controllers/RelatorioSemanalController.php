@@ -145,7 +145,7 @@ class RelatorioSemanalController extends Controller
                     0 => 'Aberto', 1 => 'Em Andamento', 9 => 'Resolvido', default => 'Outro',
                 },
                 'st_status' => (int) $c->st_status,
-                'categoria' => $ehNovo ? 'Novo' : 'Resolvido',
+                'categoria' => $ehNovo ? 'Aberto no período' : 'Resolvido no período',
                 'data_referencia' => $ehNovo
                     ? Carbon::parse($c->dt_data_chamado)->format('d/m/Y H:i')
                     : ($resolvidoEm ? Carbon::parse($resolvidoEm)->format('d/m/Y H:i') : '-'),
