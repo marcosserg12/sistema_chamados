@@ -563,7 +563,9 @@ Motivo da alteração: `;
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Motivo <span className="text-rose-500">*</span></label>
                   <Select value={data.id_motivo_principal} onValueChange={v => setData("id_motivo_principal", v)} disabled={!data.id_tipo_chamado || loadingSelects.motivo}>
                     <SelectTrigger className={cn("h-12 font-semibold shadow-sm transition-colors", localErrors.id_motivo_principal ? "border-rose-500 bg-rose-50/50" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700")}>
-                      <SelectValue placeholder={loadingSelects.motivo ? "A carregar..." : "Selecione o motivo"} />
+                      <SelectValue placeholder={loadingSelects.motivo ? "A carregar..." : "Selecione o motivo"}>
+                        {motivos.find(m => String(m.id_motivo_principal) === data.id_motivo_principal)?.ds_descricao}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {motivos.map(m => (
@@ -578,7 +580,9 @@ Motivo da alteração: `;
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Detalhamento <span className="text-rose-500">*</span></label>
                   <Select value={data.id_motivo_associado} onValueChange={v => setData("id_motivo_associado", v)} disabled={!data.id_motivo_principal || loadingSelects.detalhe}>
                     <SelectTrigger className={cn("h-12 font-semibold shadow-sm transition-colors", localErrors.id_motivo_associado ? "border-rose-500 bg-rose-50/50" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700")}>
-                      <SelectValue placeholder={loadingSelects.detalhe ? "A carregar..." : "Selecione o detalhe"} />
+                      <SelectValue placeholder={loadingSelects.detalhe ? "A carregar..." : "Selecione o detalhe"}>
+                        {detalhes.find(d => String(d.id_motivo_associado) === data.id_motivo_associado)?.ds_descricao_motivo}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {detalhes.map(d => (
