@@ -25,6 +25,7 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   const prefs = auth.user?.preferencias || {};
   const isFirstRender = React.useRef(true);
   const aiAcabouDePreencher = React.useRef(false);
+  const preenchendoComIARef = React.useRef(false);
 
   const { data, setData, post, processing } = useForm({
     ds_titulo: "",
@@ -51,10 +52,15 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   const [carregandoIA, setCarregandoIA] = useState(false);
 
   const preencherComIA = async () => {
+    // Guarda síncrona: o estado "carregandoIA" só desabilita o botão depois
+    // que o React re-renderiza, e um clique duplo rápido cabe nessa brecha.
+    // Essa ref bloqueia na hora, sem depender de re-render.
+    if (preenchendoComIARef.current) return;
     if (descricaoIA.trim().length < 10) {
       toast.error("Descreva o problema com um pouco mais de detalhe.");
       return;
     }
+    preenchendoComIARef.current = true;
     setCarregandoIA(true);
     try {
       const res = await axios.post("/api/chamados/sugestao-ia", {
@@ -92,6 +98,7 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
     } catch (err) {
       toast.error("Erro ao consultar a IA. Tente novamente ou preencha manualmente.", { duration: 8000 });
     } finally {
+      preenchendoComIARef.current = false;
       setCarregandoIA(false);
     }
   };
