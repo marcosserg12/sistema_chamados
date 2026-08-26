@@ -113,13 +113,19 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
     }));
   });
 
+  // Identifica a "sessão" atual do painel de IA. Incrementa toda vez que o
+  // painel é cancelado/fechado ou uma classificação já foi aplicada —
+  // qualquer resposta de uma chamada presa a uma sessão antiga é descartada
+  // na hora, não importa a ordem ou o motivo dela ter chegado atrasada
+  // (clique duplo, closure velha, o que for).
+  const sessaoIARef = React.useRef(0);
+
   const cancelarPainelIA = () => {
+    sessaoIARef.current += 1;
     setPainelIA(false);
     setConversaIA([]);
     setMensagemAtual("");
   };
-
-  const ultimaRequisicaoIA = React.useRef(0);
 
   const enviarMensagemIA = async () => {
     const texto = mensagemAtual.trim();
@@ -130,10 +136,7 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
     // na hora, sem depender de re-render.
     if (preenchendoComIARef.current) return;
 
-    // Segunda camada de proteção: mesmo que duas chamadas passem pela guarda
-    // acima por algum motivo, só a resposta da MAIS RECENTE é aplicada —
-    // qualquer resposta de uma chamada anterior chegando atrasada é descartada.
-    const idRequisicao = ++ultimaRequisicaoIA.current;
+    const minhaSessao = sessaoIARef.current;
 
     preenchendoComIARef.current = true;
     setCarregandoIA(true);
@@ -148,9 +151,10 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
         id_empresa: data.id_empresa || undefined,
       });
 
-      if (idRequisicao !== ultimaRequisicaoIA.current) {
-        // Chegou uma resposta de uma chamada anterior, já superada por uma
-        // mais recente — ignora pra nunca sobrescrever o que já foi aplicado.
+      if (minhaSessao !== sessaoIARef.current) {
+        // A sessão já foi encerrada (painel fechado ou já classificado)
+        // antes dessa resposta chegar — descarta pra nunca sobrescrever
+        // o que já está na tela.
         return;
       }
 
