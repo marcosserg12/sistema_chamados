@@ -78,6 +78,12 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   // quebrava a tela com o Select montado).
   const pularBuscaMotivos = React.useRef(false);
   const pularBuscaDetalhes = React.useRef(false);
+  // Muda toda vez que a IA aplica um preenchimento — usado como "key" dos
+  // Selects de Motivo/Detalhamento pra forçar o React a recriá-los do zero
+  // em vez de tentar atualizar o que já existe. O Select do Radix quebra
+  // (removeChild em nó que já não é filho, tela preta) quando a lista de
+  // opções muda enquanto ele está montado; recriar evita esse conflito.
+  const [versaoSelectsIA, setVersaoSelectsIA] = useState(0);
 
   const { data, setData, post, processing } = useForm({
     ds_titulo: "",
@@ -209,6 +215,7 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
       pularBuscaMotivos.current = true;
       pularBuscaDetalhes.current = true;
       aiAcabouDePreencher.current = true;
+      setVersaoSelectsIA((v) => v + 1);
       // Passa um objeto direto (não uma função de atualização) — o React
       // pode invocar uma função de atualização de estado mais de uma vez,
       // e isso estava fazendo esse preenchimento aplicar duas vezes com
@@ -737,7 +744,7 @@ Motivo da alteração: `;
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 sm:p-8 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <div>
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Motivo <span className="text-rose-500">*</span></label>
-                  <Select value={data.id_motivo_principal} onValueChange={v => setData("id_motivo_principal", v)} disabled={!data.id_tipo_chamado || loadingSelects.motivo}>
+                  <Select key={`motivo-${versaoSelectsIA}`} value={data.id_motivo_principal} onValueChange={v => setData("id_motivo_principal", v)} disabled={!data.id_tipo_chamado || loadingSelects.motivo}>
                     <SelectTrigger className={cn("h-12 font-semibold shadow-sm transition-colors", localErrors.id_motivo_principal ? "border-rose-500 bg-rose-50/50" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700")}>
                       <SelectValue placeholder={loadingSelects.motivo ? "A carregar..." : "Selecione o motivo"}>
                         {motivos.find(m => String(m.id_motivo_principal) === data.id_motivo_principal)?.ds_descricao}
@@ -754,7 +761,7 @@ Motivo da alteração: `;
 
                 <div>
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Detalhamento <span className="text-rose-500">*</span></label>
-                  <Select value={data.id_motivo_associado} onValueChange={v => setData("id_motivo_associado", v)} disabled={!data.id_motivo_principal || loadingSelects.detalhe}>
+                  <Select key={`detalhe-${versaoSelectsIA}`} value={data.id_motivo_associado} onValueChange={v => setData("id_motivo_associado", v)} disabled={!data.id_motivo_principal || loadingSelects.detalhe}>
                     <SelectTrigger className={cn("h-12 font-semibold shadow-sm transition-colors", localErrors.id_motivo_associado ? "border-rose-500 bg-rose-50/50" : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700")}>
                       <SelectValue placeholder={loadingSelects.detalhe ? "A carregar..." : "Selecione o detalhe"}>
                         {detalhes.find(d => String(d.id_motivo_associado) === data.id_motivo_associado)?.ds_descricao_motivo}
