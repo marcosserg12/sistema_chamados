@@ -2,14 +2,19 @@
 
 namespace App\Services;
 
-use Anthropic\Client;
 use App\Models\MotivoAssociado;
 use App\Models\MotivoPrincipal;
 use App\Models\TipoChamado;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class AiChamadoService
 {
+    // gemini-2.5-flash está na camada gratuita da API (sem cartão de crédito),
+    // com limite de requisições por dia — suficiente pra esse uso de classificação.
+    private const MODELO = 'gemini-2.5-flash';
+    private const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/';
+
     /**
      * A partir da descrição livre de um problema, sugere tipo/motivo/detalhe
      * (e um título curto) usando a árvore de classificação já cadastrada no
@@ -20,9 +25,9 @@ class AiChamadoService
      */
     public function sugerirClassificacao(string $descricao, ?int $idEmpresa = null): array
     {
-        $apiKey = config('services.anthropic.api_key');
+        $apiKey = config('services.gemini.api_key');
         if (!$apiKey) {
-            return ['ok' => false, 'erro' => 'Integração com IA não configurada (falta ANTHROPIC_API_KEY no servidor).'];
+            return ['ok' => false, 'erro' => 'Integração com IA não configurada (falta GEMINI_API_KEY no servidor).'];
         }
 
         $taxonomia = $this->montarTaxonomia($idEmpresa);
@@ -32,54 +37,56 @@ class AiChamadoService
 
         [$idsTipo, $idsMotivo, $idsDetalhe] = $this->coletarIdsValidos($taxonomia);
 
-        try {
-            $client = new Client(apiKey: $apiKey);
+        $schema = [
+            'type' => 'object',
+            'properties' => [
+                'titulo' => [
+                    'type' => 'string',
+                    'description' => 'Título curto e objetivo do chamado (até 100 caracteres), em português, resumindo o problema.',
+                ],
+                // Atenção: a API do Gemini exige que os valores de "enum" venham como
+                // string, mesmo quando "type" é "integer" (erro 400 "TYPE_STRING"
+                // caso contrário) — é assim que o Schema deles funciona, diferente do
+                // JSON Schema padrão. O "type" permanece integer normalmente.
+                'id_tipo_chamado' => ['type' => 'integer', 'enum' => array_map('strval', $idsTipo)],
+                'id_motivo_principal' => ['type' => 'integer', 'enum' => array_map('strval', $idsMotivo)],
+                'id_motivo_associado' => ['type' => 'integer', 'enum' => array_map('strval', $idsDetalhe)],
+                'st_grau' => [
+                    'type' => 'integer',
+                    'enum' => ['0', '1', '2', '3', '4'],
+                    'description' => 'Use 0 quando id_motivo_principal não for o motivo "Cadastro de Paciente" (id 6). Quando for 6: 1=Melhoria, 2=Problema, 3=Cadastro de Paciente, 4=Relatório.',
+                ],
+            ],
+            'required' => ['titulo', 'id_tipo_chamado', 'id_motivo_principal', 'id_motivo_associado', 'st_grau'],
+        ];
 
-            $message = $client->messages->create(
-                model: 'claude-opus-5',
-                maxTokens: 1024,
-                system: $this->montarPromptSistema($taxonomia),
-                messages: [
-                    ['role' => 'user', 'content' => $descricao],
-                ],
-                outputConfig: [
-                    'format' => [
-                        'type' => 'json_schema',
-                        'schema' => [
-                            'type' => 'object',
-                            'properties' => [
-                                'titulo' => [
-                                    'type' => 'string',
-                                    'maxLength' => 100,
-                                    'description' => 'Título curto e objetivo do chamado, em português, resumindo o problema.',
-                                ],
-                                'id_tipo_chamado' => ['type' => 'integer', 'enum' => $idsTipo],
-                                'id_motivo_principal' => ['type' => 'integer', 'enum' => $idsMotivo],
-                                'id_motivo_associado' => ['type' => 'integer', 'enum' => $idsDetalhe],
-                                'st_grau' => [
-                                    'type' => 'integer',
-                                    'enum' => [0, 1, 2, 3, 4],
-                                    'description' => 'Use 0 quando id_motivo_principal não for o motivo "Cadastro de Paciente" (id 6). Quando for 6: 1=Melhoria, 2=Problema, 3=Cadastro de Paciente, 4=Relatório.',
-                                ],
-                            ],
-                            'required' => ['titulo', 'id_tipo_chamado', 'id_motivo_principal', 'id_motivo_associado', 'st_grau'],
-                            'additionalProperties' => false,
-                        ],
+        try {
+            $response = Http::timeout(20)
+                ->post(self::ENDPOINT . self::MODELO . ':generateContent?key=' . $apiKey, [
+                    'systemInstruction' => [
+                        'parts' => [['text' => $this->montarPromptSistema($taxonomia)]],
                     ],
-                ],
-            );
+                    'contents' => [
+                        ['role' => 'user', 'parts' => [['text' => $descricao]]],
+                    ],
+                    'generationConfig' => [
+                        'responseMimeType' => 'application/json',
+                        'responseSchema' => $schema,
+                    ],
+                ]);
+
+            if ($response->failed()) {
+                Log::warning('Falha ao consultar Gemini para sugestão de chamado: ' . $response->body());
+                return ['ok' => false, 'erro' => 'Não foi possível consultar a IA agora. Tente novamente ou preencha manualmente.'];
+            }
+
+            $texto = $response->json('candidates.0.content.parts.0.text');
         } catch (\Throwable $e) {
-            Log::warning('Falha ao consultar IA para sugestão de chamado: ' . $e->getMessage());
+            Log::warning('Erro ao consultar Gemini para sugestão de chamado: ' . $e->getMessage());
             return ['ok' => false, 'erro' => 'Não foi possível consultar a IA agora. Tente novamente ou preencha manualmente.'];
         }
 
-        $dados = null;
-        foreach ($message->content as $block) {
-            if ($block->type === 'text') {
-                $dados = json_decode($block->text, true);
-                break;
-            }
-        }
+        $dados = is_string($texto) ? json_decode($texto, true) : null;
 
         if (!is_array($dados)) {
             return ['ok' => false, 'erro' => 'A IA não retornou uma resposta válida. Tente novamente.'];
