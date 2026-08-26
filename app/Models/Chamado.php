@@ -182,7 +182,33 @@ class Chamado extends Model
             }
         });
 
+        $query->when($filters['tipo'] ?? null, function ($q, $tipo) {
+            if ($tipo !== 'todos') {
+                $q->where('tb_chamados.id_tipo_chamado', $tipo);
+            }
+        });
+
         return $query;
+    }
+
+    /**
+     * Chamados criados dentro do período (inclusive início, exclusive fim).
+     */
+    public function scopeNovosNoPeriodo($query, $inicio, $fim)
+    {
+        return $query->whereBetween('tb_chamados.dt_data_chamado', [$inicio, $fim]);
+    }
+
+    /**
+     * Chamados que tiveram um registro de status "Resolvido" (9) dentro do período.
+     * Usa o histórico, não a data de criação, porque um chamado pode ter sido
+     * aberto antes do período e resolvido durante ele.
+     */
+    public function scopeResolvidosNoPeriodo($query, $inicio, $fim)
+    {
+        return $query->whereHas('historicosStatus', function ($q) use ($inicio, $fim) {
+            $q->where('st_status', 9)->whereBetween('dt_update', [$inicio, $fim]);
+        });
     }
 
     public function relacionamentoUsuarios()
