@@ -41,4 +41,8 @@ return [
         'instance' => env('EVOLUTION_INSTANCE', 'suporte'),
     ],
 
+    'anthropic' => [
+        'api_key' => env('ANTHROPIC_API_KEY'),
+    ],
+
 ];

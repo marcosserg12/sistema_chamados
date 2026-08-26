@@ -46,6 +46,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/api/localizacoes', [ChamadoController::class, 'getLocalizacoes']);
     Route::get('/api/motivos', [ChamadoController::class, 'getMotivos']);
     Route::get('/api/detalhes-motivo', [ChamadoController::class, 'getDetalhesMotivo']);
+    Route::post('/api/chamados/sugestao-ia', [ChamadoController::class, 'sugerirComIA']);
     
     Route::get('/api/search', [App\Http\Controllers\SearchController::class, 'globalSearch']);
     Route::get('/api/notifications', [App\Http\Controllers\NotificationController::class, 'index']);

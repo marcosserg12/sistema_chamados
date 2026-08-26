@@ -14,7 +14,7 @@ import {
 } from "@/Components/ui/select";
 import {
   ArrowLeft, UploadCloud, X, File as FileIcon, Send, Loader2, Info,
-  Server, Monitor, HelpCircle, CheckCircle2, AlertTriangle
+  Server, Monitor, HelpCircle, CheckCircle2, AlertTriangle, Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
@@ -43,6 +43,44 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   const [detalhes, setDetalhes] = useState([]);
   const [loadingSelects, setLoadingSelects] = useState({});
   const [localErrors, setLocalErrors] = useState({});
+
+  // ===== Abrir com IA (experimental) =====
+  const [painelIA, setPainelIA] = useState(false);
+  const [descricaoIA, setDescricaoIA] = useState("");
+  const [carregandoIA, setCarregandoIA] = useState(false);
+
+  const preencherComIA = async () => {
+    if (descricaoIA.trim().length < 10) {
+      toast.error("Descreva o problema com um pouco mais de detalhe.");
+      return;
+    }
+    setCarregandoIA(true);
+    try {
+      const res = await axios.post("/api/chamados/sugestao-ia", {
+        descricao: descricaoIA,
+        id_empresa: data.id_empresa || undefined,
+      });
+      if (res.data.ok) {
+        setData((prev) => ({
+          ...prev,
+          ds_titulo: res.data.titulo || prev.ds_titulo,
+          id_tipo_chamado: String(res.data.id_tipo_chamado),
+          id_motivo_principal: String(res.data.id_motivo_principal),
+          id_motivo_associado: String(res.data.id_motivo_associado),
+          st_grau: res.data.st_grau ? String(res.data.st_grau) : "",
+          ds_descricao: descricaoIA,
+        }));
+        toast.success("Preenchido com IA — confira os campos abaixo antes de enviar.");
+        setPainelIA(false);
+      } else {
+        toast.error(res.data.erro || "Não foi possível preencher automaticamente.");
+      }
+    } catch (err) {
+      toast.error("Erro ao consultar a IA. Tente novamente ou preencha manualmente.");
+    } finally {
+      setCarregandoIA(false);
+    }
+  };
 
   // =========================================================================
   // 1. AUTO-SELEÇÃO DE EMPRESA E LOCALIZAÇÃO (NOVA LÓGICA)
@@ -293,7 +331,65 @@ Comorbidades: `;
               Preencha os detalhes abaixo para que a nossa equipa possa ajudar o mais rápido possível.
             </p>
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setPainelIA((v) => !v)}
+            className="border-indigo-200 dark:border-indigo-900 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 font-bold shrink-0"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            Abrir com IA
+          </Button>
         </div>
+
+        {/* ================= PAINEL "ABRIR COM IA" (experimental) ================= */}
+        {painelIA && (
+          <Card className="border-2 border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-500/5 rounded-2xl shadow-sm animate-in fade-in slide-in-from-top-2">
+            <CardContent className="p-6 sm:p-8 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/20">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-800 dark:text-slate-100">Abrir chamado com IA</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Descreva o problema com suas palavras. A IA sugere título, categoria, motivo e detalhe — você confere tudo antes de enviar. (Recurso experimental)
+                  </p>
+                </div>
+              </div>
+
+              <Textarea
+                value={descricaoIA}
+                onChange={(e) => setDescricaoIA(e.target.value)}
+                rows={4}
+                disabled={carregandoIA}
+                placeholder="Ex: A impressora do financeiro não está imprimindo, aparece uma luz vermelha piscando e já tentei religar."
+                className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-900 resize-none text-[15px]"
+              />
+
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  type="button"
+                  onClick={preencherComIA}
+                  disabled={carregandoIA}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                >
+                  {carregandoIA ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                  {carregandoIA ? "Analisando..." : "Preencher com IA"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setPainelIA(false)}
+                  disabled={carregandoIA}
+                  className="text-slate-500"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <form onSubmit={handleSubmit} noValidate>
           <Card className="shadow-sm border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden">
