@@ -58,6 +58,7 @@ import Swal from "sweetalert2";
 import axios from "axios";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { STATUS, STATUS_LIST, STATUS_SECUNDARIOS, getStatusLabel } from "@/lib/statusChamado";
 
 export default function ChamadoDetalhes({ chamado, historico = [], chat = [], tecnicos = [], empresas = [], tiposChamado = [] }) {
   const [comentario, setComentario] = useState("");
@@ -353,11 +354,17 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
 
   const renderStatus = (statusId) => {
     const statusMap = {
-      0: { label: 'Aberto', classes: 'bg-blue-500 text-white shadow-blue-500/20' },
-      1: { label: 'Em Andamento', classes: 'bg-amber-500 text-white shadow-amber-500/20' },
-      9: { label: 'Resolvido', classes: 'bg-emerald-500 text-white shadow-emerald-500/20' },
+      0: { classes: 'bg-blue-500 text-white shadow-blue-500/20' },
+      1: { classes: 'bg-amber-500 text-white shadow-amber-500/20' },
+      2: { classes: 'bg-purple-500 text-white shadow-purple-500/20' },
+      3: { classes: 'bg-orange-500 text-white shadow-orange-500/20' },
+      8: { classes: 'bg-slate-400 text-white shadow-slate-400/20' },
+      9: { classes: 'bg-emerald-500 text-white shadow-emerald-500/20' },
     };
-    const config = statusMap[statusId] || { label: `Status ${statusId}`, classes: 'bg-slate-500 text-white shadow-slate-500/20' };
+    const config = {
+      label: getStatusLabel(statusId),
+      classes: statusMap[statusId]?.classes || 'bg-slate-500 text-white shadow-slate-500/20',
+    };
 
     return (
       <span className={cn("px-4 py-1.5 rounded-full text-sm font-bold shadow-lg tracking-wide shrink-0", config.classes)}>
@@ -391,7 +398,7 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
 
   const getSlaStatus = () => {
     if (!chamado?.dt_prazo_sla) return null;
-    if (Number(chamado.st_status) === 9) return "ok";
+    if ([STATUS.RESOLVIDO, STATUS.CANCELADO].includes(Number(chamado.st_status))) return "ok";
 
     const prazo = new Date(chamado.dt_prazo_sla);
     const now = new Date();
@@ -590,6 +597,29 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
                           )} />
                           Resolvido
                         </Button>
+                      </div>
+
+                      {/* Outros status: menos frequentes, ficam separados dos 3 principais */}
+                      <div className="mt-3">
+                        <Select
+                          value={STATUS_SECUNDARIOS.includes(Number(chamado.st_status)) ? String(chamado.st_status) : undefined}
+                          onValueChange={(v) => {
+                            const opcao = STATUS_LIST.find((s) => String(s.value) === v);
+                            if (opcao) confirmStatusChange(opcao.value, opcao.label);
+                          }}
+                          disabled={loading}
+                        >
+                          <SelectTrigger className="w-full h-10 lg:h-11 bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 text-xs lg:text-sm font-semibold text-slate-500 dark:text-slate-400">
+                            <SelectValue placeholder="Outros status..." />
+                          </SelectTrigger>
+                          <SelectContent className="dark:bg-slate-900 dark:border-slate-800">
+                            {STATUS_LIST.filter((s) => STATUS_SECUNDARIOS.includes(s.value)).map((s) => (
+                              <SelectItem key={s.value} value={String(s.value)} className="text-xs lg:text-sm font-medium">
+                                {s.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 

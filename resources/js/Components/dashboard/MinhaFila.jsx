@@ -5,6 +5,7 @@ import { Link } from "@inertiajs/react";
 import axios from "axios";
 import { GripVertical, AlertCircle, Clock, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { getStatusBadgeClass, getStatusLabel as getStatusLabelShared } from "@/lib/statusChamado";
 
 const MinhaFila = ({ chamadosFila }) => {
     const [items, setItems] = useState([]);
@@ -15,27 +16,8 @@ const MinhaFila = ({ chamadosFila }) => {
         setItems(chamadosFila || []);
     }, [chamadosFila]);
 
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 0:
-                return "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300";
-            case 1:
-                return "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300";
-            case 9:
-                return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300";
-            default:
-                return "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300";
-        }
-    };
-
-    const getStatusLabel = (status) => {
-        switch (status) {
-            case 0: return "Aberto";
-            case 1: return "Em Andamento";
-            case 9: return "Resolvido";
-            default: return "Desconhecido";
-        }
-    };
+    const getStatusColor = getStatusBadgeClass;
+    const getStatusLabel = getStatusLabelShared;
 
     const onDragEnd = async (result) => {
         if (!result.destination) {

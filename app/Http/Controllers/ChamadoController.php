@@ -87,9 +87,9 @@ class ChamadoController extends Controller
         $statsBase = Chamado::visivelPara($user)->filtrar($filtersStats);
         
         $stats = [
-            'abertos' => (clone $statsBase)->where('st_status', 0)->count(),
-            'em_andamento' => (clone $statsBase)->where('st_status', 1)->count(),
-            'resolvidos' => (clone $statsBase)->where('st_status', 9)->count(),
+            'abertos' => (clone $statsBase)->whereIn('st_status', \App\Support\StatusChamado::GRUPO_ABERTO)->count(),
+            'em_andamento' => (clone $statsBase)->whereIn('st_status', \App\Support\StatusChamado::GRUPO_EM_ANDAMENTO)->count(),
+            'resolvidos' => (clone $statsBase)->whereIn('st_status', \App\Support\StatusChamado::GRUPO_RESOLVIDO)->count(),
         ];
 
         return Inertia::render('Chamados', [
@@ -307,7 +307,7 @@ class ChamadoController extends Controller
     {
         $histStatus = HistoricoStatusChamado::join('tb_usuario_laravel as u', 'tb_historico_status_chamado.id_usuario', '=', 'u.id_usuario')
             ->where('id_chamado', $id)->select('u.ds_nome as ds_nome_usuario', 'u.ds_foto as ds_foto_usuario', 'tb_historico_status_chamado.dt_update as dt_insert',
-                DB::raw("CASE WHEN st_status = 0 THEN 'Status alterado para: Aberto' WHEN st_status = 1 THEN 'Status alterado para: Em Andamento' WHEN st_status = 9 THEN 'Status alterado para: Resolvido' ELSE 'Status alterado' END as ds_historico"));
+                DB::raw("CASE WHEN st_status = 0 THEN 'Status alterado para: Aberto' WHEN st_status = 1 THEN 'Status alterado para: Em Andamento' WHEN st_status = 2 THEN 'Status alterado para: Aguardando Teste do Usuário' WHEN st_status = 3 THEN 'Status alterado para: Pausado/Aguardando Peça' WHEN st_status = 8 THEN 'Status alterado para: Cancelado' WHEN st_status = 9 THEN 'Status alterado para: Resolvido' ELSE 'Status alterado' END as ds_historico"));
 
         $histUsuario = HistoricoUsuarioChamado::join('tb_usuario_laravel as u', 'tb_historico_usuario_chamado.id_usuario_adm', '=', 'u.id_usuario')
             ->leftJoin('tb_usuario_laravel as ud', 'tb_historico_usuario_chamado.id_usuario_desginado', '=', 'ud.id_usuario')

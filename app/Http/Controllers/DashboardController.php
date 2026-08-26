@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Chamado;
 use App\Models\Usuario;
+use App\Support\StatusChamado;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -23,9 +24,9 @@ class DashboardController extends Controller
 
         // KPIs do Usuário usando agregação
         $kpisUsuario = [
-            'abertos' => (clone $queryUsuario)->where('st_status', 0)->count(),
-            'emAndamento' => (clone $queryUsuario)->where('st_status', 1)->count(),
-            'resolvidos' => (clone $queryUsuario)->where('st_status', 9)->count(),
+            'abertos' => (clone $queryUsuario)->whereIn('st_status', StatusChamado::GRUPO_ABERTO)->count(),
+            'emAndamento' => (clone $queryUsuario)->whereIn('st_status', StatusChamado::GRUPO_EM_ANDAMENTO)->count(),
+            'resolvidos' => (clone $queryUsuario)->whereIn('st_status', StatusChamado::GRUPO_RESOLVIDO)->count(),
         ];
 
         // Lista de Recentes (visões gerais base)
@@ -42,7 +43,7 @@ class DashboardController extends Controller
              $minhaFila = Chamado::whereHas('relacionamentoUsuarios', function ($q) use ($user) {
                     $q->where('id_usuario', $user->id_usuario);
                 })
-                ->where('st_status', '!=', 9) // Ignorar resolvidos
+                ->whereNotIn('st_status', StatusChamado::GRUPO_RESOLVIDO) // Ignorar resolvidos/cancelados
                 ->leftJoin('rl_chamado_usuario as rl', function($join) use ($user) {
                     $join->on('tb_chamados.id_chamado', '=', 'rl.id_chamado')
                          ->where('rl.id_usuario', '=', $user->id_usuario);

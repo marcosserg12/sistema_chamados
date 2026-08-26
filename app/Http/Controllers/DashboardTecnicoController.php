@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Chamado;
+use App\Support\StatusChamado;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -31,19 +32,19 @@ class DashboardTecnicoController extends Controller
         $meusAtivos = DB::table('rl_chamado_usuario')
             ->join('tb_chamados', 'rl_chamado_usuario.id_chamado', '=', 'tb_chamados.id_chamado')
             ->where('rl_chamado_usuario.id_usuario', $id_usuario)
-            ->whereIn('tb_chamados.st_status', [0, 1])
+            ->whereIn('tb_chamados.st_status', StatusChamado::GRUPO_PENDENTE)
             ->count();
 
         $meusResolvidos = DB::table('rl_chamado_usuario')
             ->join('tb_chamados', 'rl_chamado_usuario.id_chamado', '=', 'tb_chamados.id_chamado')
             ->where('rl_chamado_usuario.id_usuario', $id_usuario)
-            ->where('tb_chamados.st_status', 9)
+            ->whereIn('tb_chamados.st_status', StatusChamado::GRUPO_RESOLVIDO)
             ->count();
 
         $meusAtrasados = DB::table('rl_chamado_usuario')
             ->join('tb_chamados', 'rl_chamado_usuario.id_chamado', '=', 'tb_chamados.id_chamado')
             ->where('rl_chamado_usuario.id_usuario', $id_usuario)
-            ->whereIn('tb_chamados.st_status', [0, 1])
+            ->whereIn('tb_chamados.st_status', StatusChamado::GRUPO_PENDENTE)
             ->where('tb_chamados.dt_data_chamado', '<', Carbon::now()->subHours(48))
             ->count();
 
@@ -73,7 +74,7 @@ class DashboardTecnicoController extends Controller
             $resolvidosCount = DB::table('tb_historico_status_chamado as h')
                 ->join('rl_chamado_usuario as rl', 'h.id_chamado', '=', 'rl.id_chamado')
                 ->where('rl.id_usuario', $id_usuario)
-                ->where('h.st_status', 9)
+                ->whereIn('h.st_status', StatusChamado::GRUPO_RESOLVIDO)
                 ->whereDate('h.dt_update', $dataStr)
                 ->count();
 
@@ -89,7 +90,7 @@ class DashboardTecnicoController extends Controller
             ->leftJoin('tb_empresa as e', 'c.id_empresa', '=', 'e.id_empresa')
             ->leftJoin('tb_motivo_associado as ma', 'c.id_motivo_associado', '=', 'ma.id_motivo_associado')
             ->where('rl.id_usuario', $id_usuario)
-            ->whereIn('c.st_status', [0, 1])
+            ->whereIn('c.st_status', StatusChamado::GRUPO_PENDENTE)
             ->select('c.id_chamado', 'c.ds_titulo', 'e.ds_empresa', 'c.dt_data_chamado', 'c.st_status', 'ma.ds_descricao_motivo as motivo')
             ->orderBy('c.dt_data_chamado', 'asc')
             ->limit(10)
@@ -111,7 +112,7 @@ class DashboardTecnicoController extends Controller
             ->leftJoin('tb_empresa as e', 'c.id_empresa', '=', 'e.id_empresa')
             ->leftJoin('tb_motivo_associado as ma', 'c.id_motivo_associado', '=', 'ma.id_motivo_associado')
             ->whereNull('rl.id_usuario')
-            ->where('c.st_status', 0)
+            ->where('c.st_status', StatusChamado::ABERTO)
             ->select('c.id_chamado', 'c.ds_titulo', 'e.ds_empresa', 'c.dt_data_chamado', 'ma.ds_descricao_motivo as motivo')
             ->orderBy('c.dt_data_chamado', 'asc')
             ->limit(10)
@@ -129,7 +130,7 @@ class DashboardTecnicoController extends Controller
             ->join('tb_chamados as c', 'h.id_chamado', '=', 'c.id_chamado')
             ->join('rl_chamado_usuario as rl', 'c.id_chamado', '=', 'rl.id_chamado')
             ->where('rl.id_usuario', $id_usuario)
-            ->where('h.st_status', 9)
+            ->whereIn('h.st_status', StatusChamado::GRUPO_RESOLVIDO)
             ->select(DB::raw('AVG(TIMESTAMPDIFF(HOUR, c.dt_data_chamado, h.dt_update)) as media'))
             ->first()->media ?? 0;
 
@@ -140,7 +141,7 @@ class DashboardTecnicoController extends Controller
             $count = DB::table('tb_historico_status_chamado as h')
                 ->join('rl_chamado_usuario as rl', 'h.id_chamado', '=', 'rl.id_chamado')
                 ->where('rl.id_usuario', $id_usuario)
-                ->where('h.st_status', 9)
+                ->whereIn('h.st_status', StatusChamado::GRUPO_RESOLVIDO)
                 ->whereMonth('h.dt_update', $mes->month)
                 ->whereYear('h.dt_update', $mes->year)
                 ->count();
@@ -156,7 +157,7 @@ class DashboardTecnicoController extends Controller
             ->join('rl_chamado_usuario as rl', 'c.id_chamado', '=', 'rl.id_chamado')
             ->join('tb_motivo_associado as ma', 'c.id_motivo_associado', '=', 'ma.id_motivo_associado')
             ->where('rl.id_usuario', $id_usuario)
-            ->where('c.st_status', 9)
+            ->whereIn('c.st_status', StatusChamado::GRUPO_RESOLVIDO)
             ->select('ma.ds_descricao_motivo as name', DB::raw('count(*) as value'))
             ->groupBy('ma.ds_descricao_motivo')
             ->get();

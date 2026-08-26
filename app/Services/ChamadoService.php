@@ -7,6 +7,7 @@ use App\Models\HistoricoStatusChamado;
 use App\Models\ArquivoChamado;
 use App\Models\User;
 use App\Notifications\ChamadoCriado;
+use App\Support\StatusChamado;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -209,8 +210,7 @@ class ChamadoService
 
     private function dispararNotificacaoStatus(Chamado $chamado, User $user, $novoStatus)
     {
-        $statusMap = [0 => 'Aberto', 1 => 'Em Andamento', 9 => 'Resolvido'];
-        $statusTxt = $statusMap[$novoStatus] ?? 'Alterado';
+        $statusTxt = StatusChamado::label($novoStatus);
         
         $msg = "🔄 *STATUS ATUALIZADO*\n\n".
                "O chamado *#{$chamado->id_chamado}* agora está como: *{$statusTxt}*.\n".

@@ -14,6 +14,7 @@ import {
   Activity, Target, User, ArrowRight, LayoutDashboard, Trophy
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getStatusDotClass } from "@/lib/statusChamado";
 
 export default function DashboardAdmin({
   kpis, dailyTrend, porStatus, localizacoesTop,
@@ -321,9 +322,7 @@ export default function DashboardAdmin({
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2">
-                                            <span className={cn("w-2 h-2 rounded-full shadow-sm",
-                                                chamado.st_code === 0 ? 'bg-blue-500' : 'bg-amber-500'
-                                            )}></span>
+                                            <span className={cn("w-2 h-2 rounded-full shadow-sm", getStatusDotClass(chamado.st_code))}></span>
                                             <span className="text-slate-700 dark:text-slate-300 font-medium text-xs">{chamado.status}</span>
                                         </div>
                                     </td>

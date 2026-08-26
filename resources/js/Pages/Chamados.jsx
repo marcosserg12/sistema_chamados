@@ -9,6 +9,8 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
+    SelectSeparator,
+    SelectLabel,
 } from "@/Components/ui/select";
 import { Search, Inbox, Activity, CheckCircle2, User, MapPin, Tag, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
@@ -110,6 +112,11 @@ export default function Chamados({ chamados, tecnicos, solicitantes = [], locali
                                 <SelectItem value="0" className="text-[14px] dark:focus:bg-slate-700 font-medium">Aberto</SelectItem>
                                 <SelectItem value="1" className="text-[14px] dark:focus:bg-slate-700 font-medium">Em Andamento</SelectItem>
                                 <SelectItem value="9" className="text-[14px] dark:focus:bg-slate-700 font-medium">Resolvido</SelectItem>
+                                <SelectSeparator />
+                                <SelectLabel className="text-[11px] text-slate-400">Outros status</SelectLabel>
+                                <SelectItem value="2" className="text-[14px] dark:focus:bg-slate-700 font-medium">Aguardando Teste do Usuário</SelectItem>
+                                <SelectItem value="3" className="text-[14px] dark:focus:bg-slate-700 font-medium">Pausado/Aguardando Peça</SelectItem>
+                                <SelectItem value="8" className="text-[14px] dark:focus:bg-slate-700 font-medium">Cancelado</SelectItem>
                             </SelectContent>
                         </Select>
 

@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Support\StatusChamado;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Notifications\Notification;
@@ -33,8 +34,7 @@ class StatusAlterado extends Notification implements ShouldBroadcast
 
     public function toMail($notifiable)
     {
-        $statusMap = [0 => 'Aberto', 1 => 'Em Andamento', 9 => 'Resolvido'];
-        $statusTxt = $statusMap[$this->chamado->st_status] ?? 'Alterado';
+        $statusTxt = StatusChamado::label($this->chamado->st_status);
 
         return (new \Illuminate\Notifications\Messages\MailMessage)
             ->subject('🔄 Status Alterado - Chamado #' . $this->chamado->id_chamado)
@@ -47,13 +47,7 @@ class StatusAlterado extends Notification implements ShouldBroadcast
 
     public function toArray($notifiable)
     {
-        $statusMap = [
-            0 => 'Aberto',
-            1 => 'Em Andamento',
-            9 => 'Resolvido'
-        ];
-        
-        $statusTxt = $statusMap[$this->chamado->st_status] ?? 'Alterado';
+        $statusTxt = StatusChamado::label($this->chamado->st_status);
 
         return [
             'id_chamado' => $this->chamado->id_chamado,

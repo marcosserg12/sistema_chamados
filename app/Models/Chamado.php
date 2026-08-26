@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\StatusChamado;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -200,14 +201,14 @@ class Chamado extends Model
     }
 
     /**
-     * Chamados que tiveram um registro de status "Resolvido" (9) dentro do período.
-     * Usa o histórico, não a data de criação, porque um chamado pode ter sido
-     * aberto antes do período e resolvido durante ele.
+     * Chamados que tiveram um registro de status Resolvido ou Cancelado dentro
+     * do período. Usa o histórico, não a data de criação, porque um chamado
+     * pode ter sido aberto antes do período e resolvido/cancelado durante ele.
      */
     public function scopeResolvidosNoPeriodo($query, $inicio, $fim)
     {
         return $query->whereHas('historicosStatus', function ($q) use ($inicio, $fim) {
-            $q->where('st_status', 9)->whereBetween('dt_update', [$inicio, $fim]);
+            $q->whereIn('st_status', StatusChamado::GRUPO_RESOLVIDO)->whereBetween('dt_update', [$inicio, $fim]);
         });
     }
 

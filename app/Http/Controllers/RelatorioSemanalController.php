@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Chamado;
 use App\Support\PeriodoRelatorio;
+use App\Support\StatusChamado;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -101,7 +102,7 @@ class RelatorioSemanalController extends Controller
         $filtersEmAndamento = array_merge($filters, ['status' => 'todos']);
         $emAndamentoIds = Chamado::visivelPara($user)
             ->filtrar($filtersEmAndamento)
-            ->where('st_status', 1)
+            ->whereIn('st_status', StatusChamado::GRUPO_EM_ANDAMENTO)
             ->pluck('id_chamado');
 
         $idsPeriodo = $novosIds->merge($resolvidosIds)->merge($emAndamentoIds)->unique()->values();
@@ -109,7 +110,7 @@ class RelatorioSemanalController extends Controller
         $filtersBacklog = array_merge($filters, ['status' => 'todos']);
         $backlog = Chamado::visivelPara($user)
             ->filtrar($filtersBacklog)
-            ->whereIn('st_status', [0, 1])
+            ->whereIn('st_status', StatusChamado::GRUPO_PENDENTE)
             ->count();
 
         $kpis = [
@@ -123,7 +124,7 @@ class RelatorioSemanalController extends Controller
             $filtersCarga = array_merge($filters, ['status' => 'todos']);
             $cargaPorTecnico = DB::table('rl_chamado_usuario')
                 ->joinSub(
-                    Chamado::visivelPara($user)->filtrar($filtersCarga)->whereIn('tb_chamados.st_status', [0, 1]),
+                    Chamado::visivelPara($user)->filtrar($filtersCarga)->whereIn('tb_chamados.st_status', StatusChamado::GRUPO_PENDENTE),
                     'c',
                     fn ($join) => $join->on('rl_chamado_usuario.id_chamado', '=', 'c.id_chamado')
                 )
@@ -142,19 +143,20 @@ class RelatorioSemanalController extends Controller
                 'motivoAssociado:id_motivo_associado,ds_descricao_motivo',
                 'tecnico',
                 'historicosStatus' => function ($q) use ($periodo) {
-                    $q->where('st_status', 9)
+                    $q->whereIn('st_status', StatusChamado::GRUPO_RESOLVIDO)
                         ->whereBetween('dt_update', [$periodo['inicio'], $periodo['fim']])
                         ->orderByDesc('dt_update');
                 },
             ]);
 
         // Visão geral (Admin/Super Admin): ordem alfabética pelo título, com os
-        // resolvidos sempre depois dos abertos/em andamento. Visão do Técnico:
+        // resolvidos/cancelados sempre depois dos demais. Visão do Técnico:
         // mantém a ordem cronológica (mais recentes primeiro).
         if ($user->id_perfil === 4) {
             $query->orderByDesc('dt_data_chamado');
         } else {
-            $query->orderByRaw('CASE WHEN st_status = 9 THEN 1 ELSE 0 END')
+            $grupoResolvido = implode(',', StatusChamado::GRUPO_RESOLVIDO);
+            $query->orderByRaw("CASE WHEN st_status IN ({$grupoResolvido}) THEN 1 ELSE 0 END")
                 ->orderBy('ds_titulo');
         }
 
@@ -189,9 +191,7 @@ class RelatorioSemanalController extends Controller
                 'detalhe' => $c->motivoAssociado->ds_descricao_motivo ?? '-',
                 'solicitacao' => $grauLabels[(int) $c->st_grau] ?? '-',
                 'tecnico' => $c->tecnico->ds_nome ?? 'Aguardando',
-                'status' => match ((int) $c->st_status) {
-                    0 => 'Aberto', 1 => 'Em Andamento', 9 => 'Resolvido', default => 'Outro',
-                },
+                'status' => StatusChamado::label((int) $c->st_status),
                 'st_status' => (int) $c->st_status,
                 'categoria' => $categoria,
                 'data_referencia' => $dataReferencia,
