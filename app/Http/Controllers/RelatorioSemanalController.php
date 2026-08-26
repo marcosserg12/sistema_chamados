@@ -95,7 +95,16 @@ class RelatorioSemanalController extends Controller
             ->resolvidosNoPeriodo($periodo['inicio'], $periodo['fim'])
             ->pluck('id_chamado');
 
-        $idsPeriodo = $novosIds->merge($resolvidosIds)->unique()->values();
+        // Chamados ainda em andamento agora (independente de quando foram abertos),
+        // para aparecerem na tabela mesmo que não tenham sido abertos nem resolvidos
+        // dentro do período — tanto na visão geral quanto na do próprio técnico.
+        $filtersEmAndamento = array_merge($filters, ['status' => 'todos']);
+        $emAndamentoIds = Chamado::visivelPara($user)
+            ->filtrar($filtersEmAndamento)
+            ->where('st_status', 1)
+            ->pluck('id_chamado');
+
+        $idsPeriodo = $novosIds->merge($resolvidosIds)->merge($emAndamentoIds)->unique()->values();
 
         $filtersBacklog = array_merge($filters, ['status' => 'todos']);
         $backlog = Chamado::visivelPara($user)
@@ -153,9 +162,24 @@ class RelatorioSemanalController extends Controller
 
         $grauLabels = [1 => 'Melhoria', 2 => 'Problema', 3 => 'Cadastro de Paciente', 4 => 'Relatório'];
 
-        $tabela = $chamados->map(function (Chamado $c) use ($novosIds, $grauLabels) {
-            $ehNovo = $novosIds->contains($c->id_chamado);
+        $tabela = $chamados->map(function (Chamado $c) use ($novosIds, $resolvidosIds, $grauLabels) {
             $resolvidoEm = optional($c->historicosStatus->first())->dt_update;
+
+            // Prioridade: se foi aberto no período, mostra como tal mesmo que já
+            // tenha sido resolvido também no período. Senão, se foi resolvido no
+            // período, mostra como resolvido. Senão, é um chamado mais antigo que
+            // segue em andamento agora — mostra com a data de hoje.
+            $categoria = match (true) {
+                $novosIds->contains($c->id_chamado) => 'Aberto no período',
+                $resolvidosIds->contains($c->id_chamado) => 'Resolvido no período',
+                default => 'Em andamento',
+            };
+
+            $dataReferencia = match ($categoria) {
+                'Aberto no período' => Carbon::parse($c->dt_data_chamado)->format('d/m/Y H:i'),
+                'Resolvido no período' => $resolvidoEm ? Carbon::parse($resolvidoEm)->format('d/m/Y H:i') : '-',
+                'Em andamento' => Carbon::now()->format('d/m/Y H:i'),
+            };
 
             return [
                 'id' => $c->id_chamado,
@@ -169,10 +193,8 @@ class RelatorioSemanalController extends Controller
                     0 => 'Aberto', 1 => 'Em Andamento', 9 => 'Resolvido', default => 'Outro',
                 },
                 'st_status' => (int) $c->st_status,
-                'categoria' => $ehNovo ? 'Aberto no período' : 'Resolvido no período',
-                'data_referencia' => $ehNovo
-                    ? Carbon::parse($c->dt_data_chamado)->format('d/m/Y H:i')
-                    : ($resolvidoEm ? Carbon::parse($resolvidoEm)->format('d/m/Y H:i') : '-'),
+                'categoria' => $categoria,
+                'data_referencia' => $dataReferencia,
             ];
         });
 
