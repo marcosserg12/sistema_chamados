@@ -295,25 +295,35 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
                   ))}
                 </div>
 
-                {/* Tabela completa — telas lg e maiores */}
-                <div className="hidden lg:block overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider bg-slate-50/80 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-700 sticky top-0 z-10">
+                {/* Tabela completa — telas lg e maiores. table-fixed + colgroup em % garante
+                    que a tabela nunca ultrapasse a largura do card (sem scroll horizontal);
+                    cada célula trunca o próprio conteúdo em vez de forçar a coluna a crescer. */}
+                <div className="hidden lg:block">
+                  <table className="w-full table-fixed text-sm text-left">
+                    <colgroup>
+                      <col className="w-[5%]" />
+                      <col className="w-[21%]" />
+                      <col className="w-[8%]" />
+                      <col className="w-[19%]" />
+                      <col className="w-[11%]" />
+                      <col className="w-[10%]" />
+                      <col className="w-[14%]" />
+                      <col className="w-[12%]" />
+                    </colgroup>
+                    <thead className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider bg-slate-50/80 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-700">
                       <tr>
-                        <th className="px-5 py-3 font-bold">ID</th>
-                        <th className="px-5 py-3 font-bold">Título</th>
-                        <th className="px-5 py-3 font-bold">Tipo</th>
-                        <th className="px-5 py-3 font-bold">Motivo</th>
-                        <th className="px-5 py-3 font-bold">Detalhe</th>
-                        <th className="px-5 py-3 font-bold">Solicitação</th>
-                        <th className="px-5 py-3 font-bold">Técnico</th>
-                        <th className="px-5 py-3 font-bold">Status</th>
-                        <th className="px-5 py-3 font-bold">
+                        <th className="px-3 py-3 font-bold">ID</th>
+                        <th className="px-3 py-3 font-bold">Título</th>
+                        <th className="px-3 py-3 font-bold">Tipo</th>
+                        <th className="px-3 py-3 font-bold">Classificação</th>
+                        <th className="px-3 py-3 font-bold">Técnico</th>
+                        <th className="px-3 py-3 font-bold">Status</th>
+                        <th className="px-3 py-3 font-bold">
                           <TooltipProvider delayDuration={150}>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="inline-flex items-center gap-1 cursor-help underline decoration-dotted decoration-slate-300 dark:decoration-slate-600 underline-offset-4">
-                                  Categoria <Info className="w-3 h-3" />
+                                  Categoria <Info className="w-3 h-3 shrink-0" />
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent className="max-w-xs normal-case font-normal">
@@ -324,7 +334,7 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
                             </Tooltip>
                           </TooltipProvider>
                         </th>
-                        <th className="px-5 py-3 font-bold">Data</th>
+                        <th className="px-3 py-3 font-bold">Data</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
@@ -334,16 +344,21 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
                           onClick={() => router.visit(`/chamados/${c.id}`)}
                           className="group hover:bg-indigo-50/40 dark:hover:bg-indigo-500/[0.06] transition-colors cursor-pointer"
                         >
-                          <td className="px-5 py-3.5 font-mono text-xs text-slate-400">#{c.id}</td>
-                          <td className="px-5 py-3.5 font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[240px] group-hover:text-indigo-700 dark:group-hover:text-indigo-300" title={c.titulo}>{c.titulo}</td>
-                          <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">{c.tipo}</td>
-                          <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400 max-w-[160px] truncate" title={c.motivo}>{c.motivo}</td>
-                          <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400 max-w-[160px] truncate" title={c.detalhe}>{c.detalhe}</td>
-                          <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">{c.solicitacao}</td>
-                          <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">{c.tecnico}</td>
-                          <td className="px-5 py-3.5"><StatusPill status={c.st_status} label={c.status} /></td>
-                          <td className="px-5 py-3.5"><CategoriaPill categoria={c.categoria} /></td>
-                          <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{c.data_referencia}</td>
+                          <td className="px-3 py-3 font-mono text-xs text-slate-400 truncate">#{c.id}</td>
+                          <td className="px-3 py-3 truncate font-semibold text-slate-800 dark:text-slate-200 group-hover:text-indigo-700 dark:group-hover:text-indigo-300" title={c.titulo}>
+                            {c.titulo}
+                          </td>
+                          <td className="px-3 py-3 truncate text-slate-600 dark:text-slate-400">{c.tipo}</td>
+                          <td className="px-3 py-3 text-slate-600 dark:text-slate-400 leading-tight">
+                            <span className="block truncate font-medium text-slate-700 dark:text-slate-300" title={c.motivo}>{c.motivo}</span>
+                            <span className="block truncate text-[11px] text-slate-400 dark:text-slate-500" title={`${c.detalhe} · ${c.solicitacao}`}>
+                              {c.detalhe} · {c.solicitacao}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 truncate text-slate-600 dark:text-slate-400" title={c.tecnico}>{c.tecnico}</td>
+                          <td className="px-3 py-3"><StatusPill status={c.st_status} label={c.status} /></td>
+                          <td className="px-3 py-3"><CategoriaPill categoria={c.categoria} /></td>
+                          <td className="px-3 py-3 truncate text-xs text-slate-500 dark:text-slate-400">{c.data_referencia}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -360,26 +375,29 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
 
 function StatusPill({ status, label }) {
   return (
-    <span className={cn("inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap",
+    <span className={cn("inline-flex items-center gap-1.5 max-w-full text-xs font-semibold px-2 py-1 rounded-full",
       status === 0 ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300" :
       status === 1 ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" :
       "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
     )}>
-      <span className={cn("w-1.5 h-1.5 rounded-full",
+      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0",
         status === 0 ? "bg-blue-500" : status === 1 ? "bg-amber-500" : "bg-emerald-500"
       )} />
-      {label}
+      <span className="truncate">{label}</span>
     </span>
   );
 }
 
 function CategoriaPill({ categoria }) {
   return (
-    <span className={cn("inline-flex text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap",
-      categoria === "Aberto no período" ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300" :
-      categoria === "Em andamento" ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" :
-      "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
-    )}>
+    <span
+      title={categoria}
+      className={cn("inline-block max-w-full truncate text-xs font-bold px-2 py-1 rounded-full",
+        categoria === "Aberto no período" ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300" :
+        categoria === "Em andamento" ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" :
+        "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+      )}
+    >
       {categoria}
     </span>
   );
