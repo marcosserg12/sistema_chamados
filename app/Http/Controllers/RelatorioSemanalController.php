@@ -111,6 +111,7 @@ class RelatorioSemanalController extends Controller
                     fn ($join) => $join->on('rl_chamado_usuario.id_chamado', '=', 'c.id_chamado')
                 )
                 ->join('tb_usuario_laravel as u', 'rl_chamado_usuario.id_usuario', '=', 'u.id_usuario')
+                ->where('u.id_perfil', 4)
                 ->select('u.ds_nome as name', DB::raw('count(*) as value'))
                 ->groupBy('u.ds_nome')
                 ->orderByDesc('value')
