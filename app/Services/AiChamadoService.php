@@ -10,12 +10,11 @@ use Illuminate\Support\Facades\Log;
 
 class AiChamadoService
 {
-    // gemini-3.6-flash está na camada gratuita da API (sem cartão de crédito).
-    // O 2.5-flash tem uma cota diária muito baixa hoje em dia (só ~20-50
-    // requisições/dia); o 2.0-flash foi descontinuado pelo Google (erro 404
-    // "no longer available", que indicou o 3.6-flash como substituto atual).
-    private const MODELO = 'gemini-3.6-flash';
-    private const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/';
+    // openai/gpt-oss-20b roda na Groq, gratuito e sem cartão de crédito, com
+    // saída estruturada (JSON Schema) garantida via "strict mode" — e cota de
+    // 1.000 requisições/dia, bem mais folgada que os provedores testados antes.
+    private const MODELO = 'openai/gpt-oss-20b';
+    private const ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
     /**
      * Conversa com o usuário sobre o problema até ter informação suficiente
@@ -29,9 +28,9 @@ class AiChamadoService
      */
     public function conversar(array $historico, ?int $idEmpresa = null): array
     {
-        $apiKey = config('services.gemini.api_key');
+        $apiKey = config('services.groq.api_key');
         if (!$apiKey) {
-            return ['ok' => false, 'erro' => 'Integração com IA não configurada (falta GEMINI_API_KEY no servidor).'];
+            return ['ok' => false, 'erro' => 'Integração com IA não configurada (falta GROQ_API_KEY no servidor).'];
         }
 
         $taxonomia = $this->montarTaxonomia($idEmpresa);
@@ -41,6 +40,11 @@ class AiChamadoService
 
         [$idsTipo, $idsMotivo, $idsDetalhe] = $this->coletarIdsValidos($taxonomia);
 
+        // "strict mode" da Groq exige que TODO campo do schema esteja em
+        // "required" (não existe campo opcional em strict) — por isso o
+        // schema tem tanto os campos da pergunta quanto os da classificação
+        // sempre presentes; o prompt instrui a IA a preencher os campos do
+        // outro modo com um valor de preenchimento (ignorado no PHP).
         $schema = [
             'type' => 'object',
             'properties' => [
@@ -51,70 +55,84 @@ class AiChamadoService
                 ],
                 'pergunta' => [
                     'type' => 'string',
-                    'description' => 'Só preencha quando tipo_resposta="pergunta". Uma pergunta curta, natural e direta (uma coisa de cada vez) pra pessoa detalhar melhor o problema — nunca um formulário de várias perguntas juntas.',
+                    'description' => 'Quando tipo_resposta="pergunta": uma pergunta curta, natural e direta (uma coisa de cada vez) pra pessoa detalhar melhor o problema — nunca um formulário de várias perguntas juntas. Quando tipo_resposta="classificacao": deixe como string vazia "".',
                 ],
                 'titulo' => [
                     'type' => 'string',
-                    'description' => 'Só preencha quando tipo_resposta="classificacao". Título curto e objetivo do chamado (até 100 caracteres), em português, resumindo o problema de forma específica (não genérica).',
+                    'description' => 'Quando tipo_resposta="classificacao": título curto e objetivo do chamado (até 100 caracteres), em português, resumindo o problema de forma específica (não genérica). Quando tipo_resposta="pergunta": deixe como string vazia "".',
                 ],
                 'descricao' => [
                     'type' => 'string',
-                    'description' => 'Só preencha quando tipo_resposta="classificacao". Descrição breve e direta do chamado para o técnico, em português, juntando o que a pessoa foi contando na conversa — sem alongar, sem virar um relatório formal. Escreva como a própria pessoa escreveria contando o problema (ex: "Tentei cadastrar um paciente no sistema e apareceu uma mensagem de erro na tela"), nunca em terceira pessoa tipo "o usuário relata que" ou "o usuário informa que". Baseie-se só no que foi dito — não invente detalhes, números de série, horários ou informações que não foram mencionadas.',
+                    'description' => 'Quando tipo_resposta="classificacao": descrição breve e direta do chamado para o técnico, em português, juntando o que a pessoa foi contando na conversa — sem alongar, sem virar um relatório formal. Escreva como a própria pessoa escreveria contando o problema (ex: "Tentei cadastrar um paciente no sistema e apareceu uma mensagem de erro na tela"), nunca em terceira pessoa tipo "o usuário relata que" ou "o usuário informa que". Baseie-se só no que foi dito — não invente detalhes, números de série, horários ou informações que não foram mencionadas. Quando tipo_resposta="pergunta": deixe como string vazia "".',
                 ],
-                // Atenção: a API do Gemini exige que os valores de "enum" venham como
-                // string, mesmo quando "type" é "integer" (erro 400 "TYPE_STRING"
-                // caso contrário) — é assim que o Schema deles funciona, diferente do
-                // JSON Schema padrão. O "type" permanece integer normalmente.
-                'id_tipo_chamado' => ['type' => 'integer', 'enum' => array_map('strval', $idsTipo)],
-                'id_motivo_principal' => ['type' => 'integer', 'enum' => array_map('strval', $idsMotivo)],
-                'id_motivo_associado' => ['type' => 'integer', 'enum' => array_map('strval', $idsDetalhe)],
+                'id_tipo_chamado' => [
+                    'type' => 'integer',
+                    'enum' => $idsTipo,
+                    'description' => "Quando tipo_resposta=\"pergunta\": use {$idsTipo[0]} como valor de preenchimento (será ignorado).",
+                ],
+                'id_motivo_principal' => [
+                    'type' => 'integer',
+                    'enum' => $idsMotivo,
+                    'description' => "Quando tipo_resposta=\"pergunta\": use {$idsMotivo[0]} como valor de preenchimento (será ignorado).",
+                ],
+                'id_motivo_associado' => [
+                    'type' => 'integer',
+                    'enum' => $idsDetalhe,
+                    'description' => "Quando tipo_resposta=\"pergunta\": use {$idsDetalhe[0]} como valor de preenchimento (será ignorado).",
+                ],
                 'st_grau' => [
                     'type' => 'integer',
-                    'enum' => ['0', '1', '2', '3', '4'],
-                    'description' => 'Use 0 quando id_motivo_principal não for o motivo "Cadastro de Paciente" (id 6). Quando for 6: 1=Melhoria, 2=Problema, 3=Cadastro de Paciente (só quando a pessoa está pedindo pra alguém da equipe cadastrar um paciente novo, fornecendo os dados dele), 4=Relatório. Qualquer erro, falha ou dificuldade ao tentar cadastrar, alterar ou usar o sistema é 2 (Problema), mesmo que a palavra "cadastro" apareça no relato.',
+                    'enum' => [0, 1, 2, 3, 4],
+                    'description' => 'Use 0 quando id_motivo_principal não for o motivo "Cadastro de Paciente" (id 6). Quando for 6: 1=Melhoria, 2=Problema, 3=Cadastro de Paciente (só quando a pessoa está pedindo pra alguém da equipe cadastrar um paciente novo, fornecendo os dados dele), 4=Relatório. Qualquer erro, falha ou dificuldade ao tentar cadastrar, alterar ou usar o sistema é 2 (Problema), mesmo que a palavra "cadastro" apareça no relato. Quando tipo_resposta="pergunta": use 0.',
                 ],
             ],
-            'required' => ['tipo_resposta'],
+            'required' => ['tipo_resposta', 'pergunta', 'titulo', 'descricao', 'id_tipo_chamado', 'id_motivo_principal', 'id_motivo_associado', 'st_grau'],
+            'additionalProperties' => false,
         ];
 
-        $contents = [];
+        $messages = [
+            ['role' => 'system', 'content' => $this->montarPromptSistema($taxonomia)],
+        ];
         foreach ($historico as $turno) {
-            $papel = ($turno['papel'] ?? '') === 'model' ? 'model' : 'user';
+            $papel = ($turno['papel'] ?? '') === 'model' ? 'assistant' : 'user';
             $texto = trim((string) ($turno['texto'] ?? ''));
             if ($texto === '') {
                 continue;
             }
-            $contents[] = ['role' => $papel, 'parts' => [['text' => $texto]]];
+            $messages[] = ['role' => $papel, 'content' => $texto];
         }
 
-        if (empty($contents)) {
+        if (count($messages) < 2) {
             return ['ok' => false, 'erro' => 'Descreva o problema pra começar.'];
         }
 
         $corpo = [
-            'systemInstruction' => [
-                'parts' => [['text' => $this->montarPromptSistema($taxonomia)]],
-            ],
-            'contents' => $contents,
-            'generationConfig' => [
-                'responseMimeType' => 'application/json',
-                'responseSchema' => $schema,
+            'model' => self::MODELO,
+            'messages' => $messages,
+            'response_format' => [
+                'type' => 'json_schema',
+                'json_schema' => [
+                    'name' => 'classificacao_chamado',
+                    'strict' => true,
+                    'schema' => $schema,
+                ],
             ],
         ];
 
-        // A camada gratuita da API do Gemini ocasionalmente responde 503
-        // (sobrecarga temporária do modelo), às vezes em tentativas seguidas —
-        // tenta mais algumas vezes antes de desistir, em vez de já mostrar erro.
+        // A camada gratuita ocasionalmente responde 503/429 (sobrecarga
+        // temporária) — tenta mais algumas vezes antes de desistir, em vez
+        // de já mostrar erro.
         $maxTentativas = 3;
         $response = null;
 
         for ($tentativa = 1; $tentativa <= $maxTentativas; $tentativa++) {
             try {
                 $response = Http::timeout(30)
-                    ->post(self::ENDPOINT . self::MODELO . ':generateContent?key=' . $apiKey, $corpo);
+                    ->withToken($apiKey)
+                    ->post(self::ENDPOINT, $corpo);
             } catch (\Throwable $e) {
                 if ($tentativa === $maxTentativas) {
-                    Log::warning('Erro ao consultar Gemini para sugestão de chamado: ' . $e->getMessage());
+                    Log::warning('Erro ao consultar Groq para sugestão de chamado: ' . $e->getMessage());
                     return ['ok' => false, 'erro' => 'Não foi possível consultar a IA agora. Tente novamente ou preencha manualmente.'];
                 }
                 continue;
@@ -124,15 +142,15 @@ class AiChamadoService
                 break;
             }
 
-            if ($response->status() !== 503 || $tentativa === $maxTentativas) {
-                Log::warning('Falha ao consultar Gemini para sugestão de chamado: ' . $response->body());
+            if (!in_array($response->status(), [429, 503], true) || $tentativa === $maxTentativas) {
+                Log::warning('Falha ao consultar Groq para sugestão de chamado: ' . $response->body());
                 return ['ok' => false, 'erro' => 'Não foi possível consultar a IA agora. Tente novamente ou preencha manualmente.'];
             }
 
             usleep(800000); // meio segundo antes de tentar de novo
         }
 
-        $texto = $response->json('candidates.0.content.parts.0.text');
+        $texto = $response->json('choices.0.message.content');
 
         $dados = is_string($texto) ? json_decode($texto, true) : null;
 
@@ -258,6 +276,7 @@ class AiChamadoService
         $linhas[] = '- Se o relato for vago demais pra classificar com confiança (ex: "meu computador deu problema", "o sistema não funciona", sem dizer o quê exatamente), responda com tipo_resposta="pergunta" e faça UMA pergunta curta, natural e direta pra entender melhor — como uma pessoa perguntaria, não um formulário. Não pergunte várias coisas de uma vez.';
         $linhas[] = '- Depois que a pessoa responder sua pergunta, avalie de novo: se já deu pra entender o suficiente, classifique; se ainda estiver vago, pode perguntar mais uma vez (no máximo 2-3 perguntas no total — depois disso, classifique com o que tiver, usando a opção mais genérica/provável).';
         $linhas[] = '- Nunca repita uma pergunta que a pessoa já respondeu, e nunca peça informação que ela já deu em uma mensagem anterior.';
+        $linhas[] = '- O schema de resposta exige todos os campos preenchidos mesmo quando tipo_resposta="pergunta" — nesse caso, siga exatamente o valor de preenchimento indicado na descrição de cada campo (eles são ignorados).';
         $linhas[] = '';
         $linhas[] = 'Regras da classificação final (tipo_resposta="classificacao"):';
         $linhas[] = '- id_motivo_principal deve pertencer ao id_tipo_chamado escolhido, e id_motivo_associado deve pertencer ao id_motivo_principal escolhido (siga a árvore acima).';
