@@ -512,7 +512,7 @@ class ChamadoController extends Controller
     {
         $query = MotivoAssociado::where('id_motivo_principal', $request->id_motivo);
 
-        if ($request->id_motivo == '6' && $request->has('id_empresa')) {
+        if ($request->id_motivo == '6' && $request->filled('id_empresa')) {
             $query->where('id_empresa', $request->id_empresa);
         }
 
