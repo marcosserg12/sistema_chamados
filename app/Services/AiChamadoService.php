@@ -46,7 +46,7 @@ class AiChamadoService
                 ],
                 'descricao' => [
                     'type' => 'string',
-                    'description' => 'Descrição completa do chamado para o técnico, em português, reescrevendo o relato do usuário de forma clara e completa (corrija ortografia, organize em frases completas). Baseie-se só no que o usuário disse — não invente detalhes, números de série, horários ou informações que ele não mencionou.',
+                    'description' => 'Descrição breve e direta do chamado para o técnico, em português, reescrevendo o relato do usuário só pra corrigir ortografia e organizar em frases completas — sem alongar, sem virar um relatório formal. Escreva como a própria pessoa escreveria contando o problema (ex: "Tentei cadastrar um paciente no sistema e apareceu uma mensagem de erro na tela"), nunca em terceira pessoa tipo "o usuário relata que" ou "o usuário informa que". Baseie-se só no que o usuário disse — não invente detalhes, números de série, horários ou informações que ele não mencionou.',
                 ],
                 // Atenção: a API do Gemini exige que os valores de "enum" venham como
                 // string, mesmo quando "type" é "integer" (erro 400 "TYPE_STRING"
@@ -58,7 +58,7 @@ class AiChamadoService
                 'st_grau' => [
                     'type' => 'integer',
                     'enum' => ['0', '1', '2', '3', '4'],
-                    'description' => 'Use 0 quando id_motivo_principal não for o motivo "Cadastro de Paciente" (id 6). Quando for 6: 1=Melhoria, 2=Problema, 3=Cadastro de Paciente, 4=Relatório.',
+                    'description' => 'Use 0 quando id_motivo_principal não for o motivo "Cadastro de Paciente" (id 6). Quando for 6: 1=Melhoria, 2=Problema, 3=Cadastro de Paciente (só quando a pessoa está pedindo pra alguém da equipe cadastrar um paciente novo, fornecendo os dados dele), 4=Relatório. Qualquer erro, falha ou dificuldade ao tentar cadastrar, alterar ou usar o sistema é 2 (Problema), mesmo que a palavra "cadastro" apareça no relato.',
                 ],
             ],
             'required' => ['titulo', 'descricao', 'id_tipo_chamado', 'id_motivo_principal', 'id_motivo_associado', 'st_grau'],
@@ -223,8 +223,9 @@ class AiChamadoService
         $linhas[] = '- id_motivo_principal deve pertencer ao id_tipo_chamado escolhido, e id_motivo_associado deve pertencer ao id_motivo_principal escolhido (siga a árvore acima).';
         $linhas[] = '- st_grau só é diferente de 0 quando id_motivo_principal for 6 (Cadastro de Paciente): 1=Melhoria, 2=Problema, 3=Cadastro de Paciente, 4=Relatório, conforme o que a pessoa está pedindo. Nos demais casos, st_grau=0.';
         $linhas[] = '- Pedidos para corrigir/alterar um dado de um paciente já cadastrado (ex: trocar o número de atendimento, corrigir nome, corrigir data) nos sistemas Sisibranutro/Gerencial usam st_grau=2 (Problema), não st_grau=3 — st_grau=3 é só para o cadastro de um paciente novo.';
+        $linhas[] = '- st_grau=3 (Cadastro de Paciente) só se aplica quando a pessoa está pedindo pra registrar um paciente novo e vai fornecer os dados dele (nome, data de nascimento, etc). Um erro, falha, trava ou dificuldade ao tentar cadastrar/usar o sistema é st_grau=2 (Problema), mesmo mencionando a palavra "cadastro" — ex: "não consigo cadastrar um paciente, dá erro na tela" é Problema, não Cadastro de Paciente.';
         $linhas[] = '- titulo deve ser curto (até 100 caracteres), em português, resumindo o problema — não copie a descrição inteira.';
-        $linhas[] = '- descricao deve reescrever o relato do usuário de forma clara, completa e bem escrita (corrija erros de português, organize em frases completas), mantendo só as informações que ele realmente deu — não invente nada novo.';
+        $linhas[] = '- descricao deve ser curta e direta, escrita como a própria pessoa escreveria (primeira pessoa, tom natural de quem está relatando um problema), nunca em tom de relatório/terceira pessoa ("o usuário relata que..."). Só corrija a ortografia e organize em frases completas — mantendo só as informações que ele realmente deu, sem inventar nada novo e sem alongar.';
         $linhas[] = '- Se a descrição não tiver detalhe suficiente pra decidir com confiança, escolha a opção mais genérica/provável dentro da árvore — a pessoa revisa tudo antes de enviar o chamado.';
 
         return implode("\n", $linhas);
