@@ -182,11 +182,24 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
         return;
       }
 
-      // Não busca motivo/detalhe aqui: os efeitos em cascata do formulário já
-      // fazem isso sozinhos assim que id_tipo_chamado/id_motivo_principal
-      // mudam abaixo. Buscar de novo aqui derrubava a tela (dois setMotivos
-      // seguidos trocando a lista enquanto o Select ainda está de pé
-      // quebravam o Portal do Radix).
+      // Busca as listas de motivo e detalhe NÓS MESMOS, em sequência (tipo
+      // -> motivos -> detalhes), antes de tocar em "data". Assim, no momento
+      // em que os ids são aplicados, as listas já existem e o rótulo do
+      // Select aparece de cara — sem depender da ordem/tempo dos efeitos em
+      // cascata do formulário, que reagem à mudança de "data" de um jeito
+      // que não dá pra controlar daqui.
+      const motivosRes = await axios.get(`/api/motivos?id_tipo_chamado=${tipoId}`);
+      if (minhaSessao !== sessaoIARef.current) return;
+      setMotivos(motivosRes.data);
+
+      const detalhesRes = await axios.get(
+        motivoId === "6"
+          ? `/api/detalhes-motivo?id_motivo=${motivoId}&id_empresa=${data.id_empresa || ""}`
+          : `/api/detalhes-motivo?id_motivo=${motivoId}`
+      );
+      if (minhaSessao !== sessaoIARef.current) return;
+      setDetalhes(detalhesRes.data);
+
       aiAcabouDePreencher.current = true;
       // Passa um objeto direto (não uma função de atualização) — o React
       // pode invocar uma função de atualização de estado mais de uma vez,
