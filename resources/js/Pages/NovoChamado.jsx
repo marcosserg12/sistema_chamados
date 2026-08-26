@@ -119,13 +119,21 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
     setMensagemAtual("");
   };
 
+  const ultimaRequisicaoIA = React.useRef(0);
+
   const enviarMensagemIA = async () => {
     const texto = mensagemAtual.trim();
     if (!texto) return;
     // Guarda síncrona: o estado "carregandoIA" só desabilita o botão depois
-    // que o React re-renderiza, e um clique duplo rápido cabe nessa brecha.
-    // Essa ref bloqueia na hora, sem depender de re-render.
+    // que o React re-renderiza, e um clique duplo rápido (ou tecla Enter
+    // segurada, que repete o evento) cabe nessa brecha. Essa ref bloqueia
+    // na hora, sem depender de re-render.
     if (preenchendoComIARef.current) return;
+
+    // Segunda camada de proteção: mesmo que duas chamadas passem pela guarda
+    // acima por algum motivo, só a resposta da MAIS RECENTE é aplicada —
+    // qualquer resposta de uma chamada anterior chegando atrasada é descartada.
+    const idRequisicao = ++ultimaRequisicaoIA.current;
 
     preenchendoComIARef.current = true;
     setCarregandoIA(true);
@@ -139,6 +147,12 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
         historico: novoHistorico,
         id_empresa: data.id_empresa || undefined,
       });
+
+      if (idRequisicao !== ultimaRequisicaoIA.current) {
+        // Chegou uma resposta de uma chamada anterior, já superada por uma
+        // mais recente — ignora pra nunca sobrescrever o que já foi aplicado.
+        return;
+      }
 
       if (!res.data.ok) {
         toast.error(res.data.erro || "Não foi possível continuar a conversa.", { duration: 8000 });
@@ -170,15 +184,19 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
       // seguidos trocando a lista enquanto o Select ainda está de pé
       // quebravam o Portal do Radix).
       aiAcabouDePreencher.current = true;
-      setData((prev) => ({
-        ...prev,
-        ds_titulo: res.data.titulo || prev.ds_titulo,
+      // Passa um objeto direto (não uma função de atualização) — o React
+      // pode invocar uma função de atualização de estado mais de uma vez,
+      // e isso estava fazendo esse preenchimento aplicar duas vezes com
+      // valores diferentes. Um objeto direto não tem essa brecha.
+      setData({
+        ...data,
+        ds_titulo: res.data.titulo || data.ds_titulo,
         id_tipo_chamado: tipoId,
         id_motivo_principal: motivoId,
         id_motivo_associado: detalheId,
-        st_grau: res.data.st_grau ? String(res.data.st_grau) : prev.st_grau,
+        st_grau: res.data.st_grau ? String(res.data.st_grau) : data.st_grau,
         ds_descricao: res.data.descricao || texto,
-      }));
+      });
 
       toast.success("Preenchido com IA — confira os campos abaixo antes de enviar.");
       cancelarPainelIA();
