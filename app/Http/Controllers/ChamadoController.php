@@ -547,19 +547,22 @@ class ChamadoController extends Controller
     }
 
     /**
-     * Sugere título/tipo/motivo/detalhe a partir da descrição livre do
-     * problema, usando IA (opção "Abrir com IA" no Novo Chamado). Só sugere
-     * — quem decide se aceita é a pessoa, na revisão do formulário.
+     * Conversa com a pessoa até ter informação suficiente pra sugerir
+     * título/tipo/motivo/detalhe do chamado (opção "Abrir com IA" no Novo
+     * Chamado). Só sugere — quem decide se aceita é a pessoa, na revisão do
+     * formulário.
      */
     public function sugerirComIA(Request $request, \App\Services\AiChamadoService $aiService)
     {
         $request->validate([
-            'descricao' => 'required|string|min:10|max:4000',
+            'historico' => 'required|array|min:1|max:20',
+            'historico.*.papel' => 'required|string|in:user,model',
+            'historico.*.texto' => 'required|string|max:4000',
             'id_empresa' => 'nullable|integer',
         ]);
 
-        $sugestao = $aiService->sugerirClassificacao(
-            $request->input('descricao'),
+        $sugestao = $aiService->conversar(
+            $request->input('historico'),
             $request->filled('id_empresa') ? (int) $request->input('id_empresa') : null
         );
 

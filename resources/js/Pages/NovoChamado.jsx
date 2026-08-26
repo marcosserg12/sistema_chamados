@@ -14,11 +14,57 @@ import {
 } from "@/Components/ui/select";
 import {
   ArrowLeft, UploadCloud, X, File as FileIcon, Send, Loader2, Info,
-  Server, Monitor, HelpCircle, CheckCircle2, AlertTriangle, Sparkles
+  Server, Monitor, HelpCircle, CheckCircle2, AlertTriangle, Sparkles, Mic, MicOff
 } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 import { cn } from "@/lib/utils";
+
+// Ditado por voz (Web Speech API) — usado tanto no chat da IA quanto na
+// Descrição Completa. Só funciona em navegadores baseados em Chromium
+// (Chrome/Edge); em outros, o botão avisa que não é suportado.
+function useDitado(aoReconhecer) {
+  const recognitionRef = React.useRef(null);
+  const [gravando, setGravando] = useState(false);
+  const SpeechRecognitionCtor = typeof window !== "undefined"
+    ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+    : null;
+
+  const alternar = () => {
+    if (!SpeechRecognitionCtor) {
+      toast.error("Ditado por voz não é suportado neste navegador. Tente o Chrome ou o Edge.");
+      return;
+    }
+
+    if (gravando) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = "pt-BR";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+      let textoFinal = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          textoFinal += event.results[i][0].transcript;
+        }
+      }
+      if (textoFinal.trim()) aoReconhecer(textoFinal.trim());
+    };
+    recognition.onerror = () => setGravando(false);
+    recognition.onend = () => setGravando(false);
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setGravando(true);
+  };
+
+  return { suportado: !!SpeechRecognitionCtor, gravando, alternar };
+}
 
 export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   const { auth } = usePage().props;
@@ -40,11 +86,6 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
     arquivos: [],
   });
 
-  useEffect(() => {
-    console.log("[DEBUG-WATCH] id_motivo_principal mudou para:", JSON.stringify(data.id_motivo_principal), "| id_motivo_associado:", JSON.stringify(data.id_motivo_associado));
-    console.trace();
-  }, [data.id_motivo_principal, data.id_motivo_associado]);
-
   const [localizacoes, setLocalizacoes] = useState([]);
   const [motivos, setMotivos] = useState([]);
   const [detalhes, setDetalhes] = useState([]);
@@ -53,42 +94,60 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
 
   // ===== Abrir com IA (experimental) =====
   const [painelIA, setPainelIA] = useState(false);
-  const [descricaoIA, setDescricaoIA] = useState("");
+  const [conversaIA, setConversaIA] = useState([]); // [{ papel: 'user'|'model', texto }]
+  const [mensagemAtual, setMensagemAtual] = useState("");
   const [carregandoIA, setCarregandoIA] = useState(false);
 
-  const preencherComIA = async () => {
-    const callId = Math.random().toString(36).slice(2, 8);
-    console.log(`[DEBUG-IA ${callId}] ENTROU na função. guard atual=`, preenchendoComIARef.current);
+  const ditadoChat = useDitado((texto) => {
+    setMensagemAtual((prev) => (prev ? `${prev} ${texto}` : texto));
+  });
+  const ditadoDescricao = useDitado((texto) => {
+    setData((prev) => ({
+      ...prev,
+      ds_descricao: prev.ds_descricao ? `${prev.ds_descricao} ${texto}` : texto,
+    }));
+  });
+
+  const cancelarPainelIA = () => {
+    setPainelIA(false);
+    setConversaIA([]);
+    setMensagemAtual("");
+  };
+
+  const enviarMensagemIA = async () => {
+    const texto = mensagemAtual.trim();
+    if (!texto) return;
     // Guarda síncrona: o estado "carregandoIA" só desabilita o botão depois
     // que o React re-renderiza, e um clique duplo rápido cabe nessa brecha.
     // Essa ref bloqueia na hora, sem depender de re-render.
-    if (preenchendoComIARef.current) {
-      console.log(`[DEBUG-IA ${callId}] BLOQUEADO pelo guard, saindo.`);
-      return;
-    }
-    if (descricaoIA.trim().length < 10) {
-      toast.error("Descreva o problema com um pouco mais de detalhe.");
-      return;
-    }
+    if (preenchendoComIARef.current) return;
+
     preenchendoComIARef.current = true;
     setCarregandoIA(true);
+
+    const novoHistorico = [...conversaIA, { papel: "user", texto }];
+    setConversaIA(novoHistorico);
+    setMensagemAtual("");
+
     try {
-      console.log(`[DEBUG-IA ${callId}] antes do axios.post`);
       const res = await axios.post("/api/chamados/sugestao-ia", {
-        descricao: descricaoIA,
+        historico: novoHistorico,
         id_empresa: data.id_empresa || undefined,
       });
-      console.log(`[DEBUG-IA ${callId}] depois do axios.post, res.data=`, JSON.stringify(res.data));
 
       if (!res.data.ok) {
-        toast.error(res.data.erro || "Não foi possível preencher automaticamente.", { duration: 8000 });
+        toast.error(res.data.erro || "Não foi possível continuar a conversa.", { duration: 8000 });
+        return;
+      }
+
+      if (res.data.tipo_resposta === "pergunta") {
+        setConversaIA((prev) => [...prev, { papel: "model", texto: res.data.pergunta }]);
         return;
       }
 
       const tipoId = String(res.data.id_tipo_chamado);
       const motivoId = String(res.data.id_motivo_principal);
       const detalheId = String(res.data.id_motivo_associado);
-      console.log(`[DEBUG-IA ${callId}] antes do setData. tipoId=${tipoId} motivoId=${motivoId} detalheId=${detalheId}`);
 
       // Não busca motivo/detalhe aqui: os efeitos em cascata do formulário já
       // fazem isso sozinhos assim que id_tipo_chamado/id_motivo_principal
@@ -96,22 +155,18 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
       // seguidos trocando a lista enquanto o Select ainda está de pé
       // quebravam o Portal do Radix).
       aiAcabouDePreencher.current = true;
-      setData((prev) => {
-        console.log(`[DEBUG-IA ${callId}] DENTRO do updater do setData. prev.id_motivo_principal=`, prev.id_motivo_principal, "-> novo:", motivoId);
-        return {
-          ...prev,
-          ds_titulo: res.data.titulo || prev.ds_titulo,
-          id_tipo_chamado: tipoId,
-          id_motivo_principal: motivoId,
-          id_motivo_associado: detalheId,
-          st_grau: res.data.st_grau ? String(res.data.st_grau) : "",
-          ds_descricao: res.data.descricao || descricaoIA,
-        };
-      });
-      console.log(`[DEBUG-IA ${callId}] depois do setData`);
+      setData((prev) => ({
+        ...prev,
+        ds_titulo: res.data.titulo || prev.ds_titulo,
+        id_tipo_chamado: tipoId,
+        id_motivo_principal: motivoId,
+        id_motivo_associado: detalheId,
+        st_grau: res.data.st_grau ? String(res.data.st_grau) : "",
+        ds_descricao: res.data.descricao || texto,
+      }));
 
       toast.success("Preenchido com IA — confira os campos abaixo antes de enviar.");
-      setPainelIA(false);
+      cancelarPainelIA();
     } catch (err) {
       toast.error("Erro ao consultar a IA. Tente novamente ou preencha manualmente.", { duration: 8000 });
     } finally {
@@ -414,40 +469,85 @@ Motivo da alteração: `;
                 <div>
                   <h3 className="font-black text-slate-800 dark:text-slate-100">Abrir chamado com IA</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Descreva o problema com suas palavras. A IA sugere título, categoria, motivo e detalhe — você confere tudo antes de enviar. (Recurso experimental)
+                    Descreva o problema com suas palavras. Se faltar algum detalhe, a IA pergunta antes de preencher o chamado — você confere tudo antes de enviar. (Recurso experimental)
                   </p>
                 </div>
               </div>
 
-              <Textarea
-                value={descricaoIA}
-                onChange={(e) => setDescricaoIA(e.target.value)}
-                rows={4}
-                disabled={carregandoIA}
-                placeholder="Ex: A impressora do financeiro não está imprimindo, aparece uma luz vermelha piscando e já tentei religar."
-                className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-900 resize-none text-[15px]"
-              />
+              {conversaIA.length > 0 && (
+                <div className="max-h-80 overflow-y-auto space-y-3 p-4 bg-white/60 dark:bg-slate-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900">
+                  {conversaIA.map((msg, i) => (
+                    <div key={i} className={cn("flex", msg.papel === "user" ? "justify-end" : "justify-start")}>
+                      <div
+                        className={cn(
+                          "max-w-[85%] rounded-2xl px-4 py-2 text-sm leading-relaxed",
+                          msg.papel === "user"
+                            ? "bg-indigo-600 text-white"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
+                        )}
+                      >
+                        {msg.texto}
+                      </div>
+                    </div>
+                  ))}
+                  {carregandoIA && (
+                    <div className="flex justify-start">
+                      <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
-              <div className="flex flex-wrap gap-3">
+              <div className="flex gap-2 items-center">
+                <Input
+                  value={mensagemAtual}
+                  onChange={(e) => setMensagemAtual(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      enviarMensagemIA();
+                    }
+                  }}
+                  disabled={carregandoIA}
+                  placeholder={conversaIA.length === 0
+                    ? "Ex: A impressora do financeiro não está imprimindo, aparece uma luz vermelha piscando."
+                    : "Digite sua resposta..."}
+                  className="h-12 bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-900 text-[15px]"
+                />
                 <Button
                   type="button"
-                  onClick={preencherComIA}
+                  variant="outline"
+                  onClick={ditadoChat.alternar}
                   disabled={carregandoIA}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                  title={ditadoChat.suportado ? "Falar em vez de digitar" : "Ditado por voz não suportado neste navegador"}
+                  className={cn(
+                    "h-12 w-12 shrink-0 p-0 border-indigo-200 dark:border-indigo-900",
+                    ditadoChat.gravando && "bg-rose-500 hover:bg-rose-600 text-white border-rose-500 animate-pulse"
+                  )}
                 >
-                  {carregandoIA ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                  {carregandoIA ? "Analisando..." : "Preencher com IA"}
+                  {ditadoChat.gravando ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                 </Button>
                 <Button
                   type="button"
-                  variant="ghost"
-                  onClick={() => setPainelIA(false)}
-                  disabled={carregandoIA}
-                  className="text-slate-500"
+                  onClick={enviarMensagemIA}
+                  disabled={carregandoIA || !mensagemAtual.trim()}
+                  className="h-12 shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5"
                 >
-                  Cancelar
+                  {carregandoIA ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </Button>
               </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={cancelarPainelIA}
+                disabled={carregandoIA}
+                className="text-slate-500"
+              >
+                Cancelar
+              </Button>
             </CardContent>
           </Card>
         )}
@@ -656,8 +756,22 @@ Motivo da alteração: `;
 
               {/* 5. DESCRIÇÃO COMPLETA */}
               <div className="pt-4">
-                <label className="text-sm font-extrabold text-slate-800 dark:text-slate-200 mb-2 block">
-                  Descrição Completa <span className="text-rose-500">*</span>
+                <label className="text-sm font-extrabold text-slate-800 dark:text-slate-200 mb-2 flex items-center justify-between">
+                  <span>Descrição Completa <span className="text-rose-500">*</span></span>
+                  <button
+                    type="button"
+                    onClick={ditadoDescricao.alternar}
+                    title={ditadoDescricao.suportado ? "Falar em vez de digitar" : "Ditado por voz não suportado neste navegador"}
+                    className={cn(
+                      "flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-colors normal-case",
+                      ditadoDescricao.gravando
+                        ? "bg-rose-500 hover:bg-rose-600 text-white border-rose-500 animate-pulse"
+                        : "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900 hover:bg-indigo-50 dark:hover:bg-indigo-500/10"
+                    )}
+                  >
+                    {ditadoDescricao.gravando ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                    {ditadoDescricao.gravando ? "Gravando..." : "Ditar"}
+                  </button>
                 </label>
                 <Textarea
                   value={data.ds_descricao}

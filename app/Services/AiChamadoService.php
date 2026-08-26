@@ -18,14 +18,16 @@ class AiChamadoService
     private const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
     /**
-     * A partir da descrição livre de um problema, sugere tipo/motivo/detalhe
-     * (e um título curto) usando a árvore de classificação já cadastrada no
-     * sistema. Nunca inventa um id fora da árvore — a resposta é validada
-     * contra a taxonomia real antes de ser devolvida.
+     * Conversa com o usuário sobre o problema até ter informação suficiente
+     * pra classificar o chamado. A cada turno a IA decide: ou pede mais
+     * detalhe (tipo_resposta=pergunta), ou já devolve a classificação final
+     * (tipo_resposta=classificacao) — nunca inventa um id fora da árvore, a
+     * classificação final é sempre revalidada contra a taxonomia real.
      *
-     * @return array{ok: bool, titulo?: string, descricao?: string, id_tipo_chamado?: int, id_motivo_principal?: int, id_motivo_associado?: int, st_grau?: int|null, erro?: string}
+     * @param array<int, array{papel: string, texto: string}> $historico Turnos da conversa, na ordem (papel: 'user' ou 'model').
+     * @return array{ok: bool, tipo_resposta?: string, pergunta?: string, titulo?: string, descricao?: string, id_tipo_chamado?: int, id_motivo_principal?: int, id_motivo_associado?: int, st_grau?: int|null, erro?: string}
      */
-    public function sugerirClassificacao(string $descricao, ?int $idEmpresa = null): array
+    public function conversar(array $historico, ?int $idEmpresa = null): array
     {
         $apiKey = config('services.gemini.api_key');
         if (!$apiKey) {
@@ -42,13 +44,22 @@ class AiChamadoService
         $schema = [
             'type' => 'object',
             'properties' => [
+                'tipo_resposta' => [
+                    'type' => 'string',
+                    'enum' => ['pergunta', 'classificacao'],
+                    'description' => 'Use "pergunta" quando ainda faltar informação essencial pra classificar com confiança. Use "classificacao" quando já souber o suficiente pra preencher o chamado.',
+                ],
+                'pergunta' => [
+                    'type' => 'string',
+                    'description' => 'Só preencha quando tipo_resposta="pergunta". Uma pergunta curta, natural e direta (uma coisa de cada vez) pra pessoa detalhar melhor o problema — nunca um formulário de várias perguntas juntas.',
+                ],
                 'titulo' => [
                     'type' => 'string',
-                    'description' => 'Título curto e objetivo do chamado (até 100 caracteres), em português, resumindo o problema de forma específica (não genérica).',
+                    'description' => 'Só preencha quando tipo_resposta="classificacao". Título curto e objetivo do chamado (até 100 caracteres), em português, resumindo o problema de forma específica (não genérica).',
                 ],
                 'descricao' => [
                     'type' => 'string',
-                    'description' => 'Descrição breve e direta do chamado para o técnico, em português, reescrevendo o relato do usuário só pra corrigir ortografia e organizar em frases completas — sem alongar, sem virar um relatório formal. Escreva como a própria pessoa escreveria contando o problema (ex: "Tentei cadastrar um paciente no sistema e apareceu uma mensagem de erro na tela"), nunca em terceira pessoa tipo "o usuário relata que" ou "o usuário informa que". Baseie-se só no que o usuário disse — não invente detalhes, números de série, horários ou informações que ele não mencionou.',
+                    'description' => 'Só preencha quando tipo_resposta="classificacao". Descrição breve e direta do chamado para o técnico, em português, juntando o que a pessoa foi contando na conversa — sem alongar, sem virar um relatório formal. Escreva como a própria pessoa escreveria contando o problema (ex: "Tentei cadastrar um paciente no sistema e apareceu uma mensagem de erro na tela"), nunca em terceira pessoa tipo "o usuário relata que" ou "o usuário informa que". Baseie-se só no que foi dito — não invente detalhes, números de série, horários ou informações que não foram mencionadas.',
                 ],
                 // Atenção: a API do Gemini exige que os valores de "enum" venham como
                 // string, mesmo quando "type" é "integer" (erro 400 "TYPE_STRING"
@@ -63,16 +74,28 @@ class AiChamadoService
                     'description' => 'Use 0 quando id_motivo_principal não for o motivo "Cadastro de Paciente" (id 6). Quando for 6: 1=Melhoria, 2=Problema, 3=Cadastro de Paciente (só quando a pessoa está pedindo pra alguém da equipe cadastrar um paciente novo, fornecendo os dados dele), 4=Relatório. Qualquer erro, falha ou dificuldade ao tentar cadastrar, alterar ou usar o sistema é 2 (Problema), mesmo que a palavra "cadastro" apareça no relato.',
                 ],
             ],
-            'required' => ['titulo', 'descricao', 'id_tipo_chamado', 'id_motivo_principal', 'id_motivo_associado', 'st_grau'],
+            'required' => ['tipo_resposta'],
         ];
+
+        $contents = [];
+        foreach ($historico as $turno) {
+            $papel = ($turno['papel'] ?? '') === 'model' ? 'model' : 'user';
+            $texto = trim((string) ($turno['texto'] ?? ''));
+            if ($texto === '') {
+                continue;
+            }
+            $contents[] = ['role' => $papel, 'parts' => [['text' => $texto]]];
+        }
+
+        if (empty($contents)) {
+            return ['ok' => false, 'erro' => 'Descreva o problema pra começar.'];
+        }
 
         $corpo = [
             'systemInstruction' => [
                 'parts' => [['text' => $this->montarPromptSistema($taxonomia)]],
             ],
-            'contents' => [
-                ['role' => 'user', 'parts' => [['text' => $descricao]]],
-            ],
+            'contents' => $contents,
             'generationConfig' => [
                 'responseMimeType' => 'application/json',
                 'responseSchema' => $schema,
@@ -115,6 +138,15 @@ class AiChamadoService
 
         if (!is_array($dados)) {
             return ['ok' => false, 'erro' => 'A IA não retornou uma resposta válida. Tente novamente.'];
+        }
+
+        if (($dados['tipo_resposta'] ?? '') === 'pergunta') {
+            $pergunta = trim((string) ($dados['pergunta'] ?? ''));
+            if ($pergunta === '') {
+                return ['ok' => false, 'erro' => 'A IA não retornou uma resposta válida. Tente novamente.'];
+            }
+
+            return ['ok' => true, 'tipo_resposta' => 'pergunta', 'pergunta' => $pergunta];
         }
 
         return $this->validarConsistencia($dados, $taxonomia);
@@ -204,8 +236,8 @@ class AiChamadoService
     private function montarPromptSistema(array $taxonomia): string
     {
         $linhas = [
-            'Você classifica chamados de suporte de TI para um sistema hospitalar/nutricional.',
-            'Dado o relato de um usuário, escolha a combinação mais adequada de tipo, motivo e detalhe dentro da árvore abaixo. Nunca invente um id que não esteja listado.',
+            'Você é um assistente de abertura de chamados de suporte de TI para um sistema hospitalar/nutricional, conversando diretamente com quem está com o problema.',
+            'Seu objetivo é juntar informação suficiente pra classificar o chamado corretamente, escolhendo a combinação mais adequada de tipo, motivo e detalhe dentro da árvore abaixo. Nunca invente um id que não esteja listado.',
             '',
             'Árvore de classificação (tipo > motivo > detalhe):',
         ];
@@ -221,14 +253,19 @@ class AiChamadoService
         }
 
         $linhas[] = '';
-        $linhas[] = 'Regras:';
+        $linhas[] = 'Como conversar:';
+        $linhas[] = '- Se o relato já tiver detalhe suficiente pra classificar com confiança (o quê, onde/em qual sistema, e algo do que está acontecendo), responda direto com tipo_resposta="classificacao" — não fique perguntando por perguntar.';
+        $linhas[] = '- Se o relato for vago demais pra classificar com confiança (ex: "meu computador deu problema", "o sistema não funciona", sem dizer o quê exatamente), responda com tipo_resposta="pergunta" e faça UMA pergunta curta, natural e direta pra entender melhor — como uma pessoa perguntaria, não um formulário. Não pergunte várias coisas de uma vez.';
+        $linhas[] = '- Depois que a pessoa responder sua pergunta, avalie de novo: se já deu pra entender o suficiente, classifique; se ainda estiver vago, pode perguntar mais uma vez (no máximo 2-3 perguntas no total — depois disso, classifique com o que tiver, usando a opção mais genérica/provável).';
+        $linhas[] = '- Nunca repita uma pergunta que a pessoa já respondeu, e nunca peça informação que ela já deu em uma mensagem anterior.';
+        $linhas[] = '';
+        $linhas[] = 'Regras da classificação final (tipo_resposta="classificacao"):';
         $linhas[] = '- id_motivo_principal deve pertencer ao id_tipo_chamado escolhido, e id_motivo_associado deve pertencer ao id_motivo_principal escolhido (siga a árvore acima).';
         $linhas[] = '- st_grau só é diferente de 0 quando id_motivo_principal for 6 (Cadastro de Paciente): 1=Melhoria, 2=Problema, 3=Cadastro de Paciente, 4=Relatório, conforme o que a pessoa está pedindo. Nos demais casos, st_grau=0.';
         $linhas[] = '- Pedidos para corrigir/alterar um dado de um paciente já cadastrado (ex: trocar o número de atendimento, corrigir nome, corrigir data) nos sistemas Sisibranutro/Gerencial usam st_grau=2 (Problema), não st_grau=3 — st_grau=3 é só para o cadastro de um paciente novo.';
         $linhas[] = '- st_grau=3 (Cadastro de Paciente) só se aplica quando a pessoa está pedindo pra registrar um paciente novo e vai fornecer os dados dele (nome, data de nascimento, etc). Um erro, falha, trava ou dificuldade ao tentar cadastrar/usar o sistema é st_grau=2 (Problema), mesmo mencionando a palavra "cadastro" — ex: "não consigo cadastrar um paciente, dá erro na tela" é Problema, não Cadastro de Paciente.';
         $linhas[] = '- titulo deve ser curto (até 100 caracteres), em português, resumindo o problema — não copie a descrição inteira.';
-        $linhas[] = '- descricao deve ser curta e direta, escrita como a própria pessoa escreveria (primeira pessoa, tom natural de quem está relatando um problema), nunca em tom de relatório/terceira pessoa ("o usuário relata que..."). Só corrija a ortografia e organize em frases completas — mantendo só as informações que ele realmente deu, sem inventar nada novo e sem alongar.';
-        $linhas[] = '- Se a descrição não tiver detalhe suficiente pra decidir com confiança, escolha a opção mais genérica/provável dentro da árvore — a pessoa revisa tudo antes de enviar o chamado.';
+        $linhas[] = '- descricao deve ser curta e direta, escrita como a própria pessoa escreveria (primeira pessoa, tom natural de quem está relatando um problema), juntando o que foi dito na conversa inteira, nunca em tom de relatório/terceira pessoa ("o usuário relata que..."). Só corrija a ortografia e organize em frases completas — mantendo só as informações que foram realmente ditas, sem inventar nada novo e sem alongar.';
 
         return implode("\n", $linhas);
     }
@@ -260,6 +297,7 @@ class AiChamadoService
 
                     return [
                         'ok' => true,
+                        'tipo_resposta' => 'classificacao',
                         'titulo' => mb_substr(trim((string) ($dados['titulo'] ?? '')), 0, 120),
                         'descricao' => trim((string) ($dados['descricao'] ?? '')),
                         'id_tipo_chamado' => $tipo['id'],
