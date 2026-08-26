@@ -33,12 +33,15 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
       isFirstRender.current = false;
       return;
     }
-    router.get("/relatorios", { inicio: periodo.inicio, status, tecnico, tipo }, {
+    const params = personalizado
+      ? { modo: "personalizado", data_inicio: dataInicio, data_fim: dataFim, status, tecnico, tipo }
+      : { inicio: periodo.inicio, status, tecnico, tipo };
+    router.get("/relatorios", params, {
       preserveState: true,
       preserveScroll: true,
       replace: true,
     });
-  }, [status, tecnico, tipo]);
+  }, [status, tecnico, tipo, personalizado, dataInicio, dataFim]);
 
   return (
     <AppLayout>
