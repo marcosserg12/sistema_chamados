@@ -10,9 +10,11 @@ use Illuminate\Support\Facades\Log;
 
 class AiChamadoService
 {
-    // gemini-2.5-flash está na camada gratuita da API (sem cartão de crédito),
-    // com limite de requisições por dia — suficiente pra esse uso de classificação.
-    private const MODELO = 'gemini-2.5-flash';
+    // gemini-3.6-flash está na camada gratuita da API (sem cartão de crédito).
+    // O 2.5-flash tem uma cota diária muito baixa hoje em dia (só ~20-50
+    // requisições/dia); o 2.0-flash foi descontinuado pelo Google (erro 404
+    // "no longer available", que indicou o 3.6-flash como substituto atual).
+    private const MODELO = 'gemini-3.6-flash';
     private const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
     /**
