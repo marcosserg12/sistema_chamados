@@ -39,6 +39,9 @@
         .status-resolvido { color: #059669; font-weight: bold; }
         .status-andamento { color: #b45309; font-weight: bold; }
         .status-aberto { color: #2563eb; font-weight: bold; }
+        .status-aguardando-teste { color: #9333ea; font-weight: bold; }
+        .status-pausado { color: #c2410c; font-weight: bold; }
+        .status-cancelado { color: #64748b; font-weight: bold; }
 
         .footer { margin-top: 16px; font-size: 8.5px; color: #94a3b8; text-align: center; }
     </style>
@@ -108,7 +111,18 @@
                     <td>{{ $linha['detalhe'] }}</td>
                     <td>{{ $linha['solicitacao'] }}</td>
                     <td>{{ $linha['tecnico'] }}</td>
-                    <td class="{{ $linha['st_status'] === 9 ? 'status-resolvido' : ($linha['st_status'] === 1 ? 'status-andamento' : 'status-aberto') }}">{{ $linha['status'] }}</td>
+                    @php
+                        $statusClasse = match ($linha['st_status']) {
+                            0 => 'status-aberto',
+                            1 => 'status-andamento',
+                            2 => 'status-aguardando-teste',
+                            3 => 'status-pausado',
+                            8 => 'status-cancelado',
+                            9 => 'status-resolvido',
+                            default => '',
+                        };
+                    @endphp
+                    <td class="{{ $statusClasse }}">{{ $linha['status'] }}</td>
                     <td>{{ $linha['categoria'] }}</td>
                     <td>{{ $linha['data_referencia'] }}</td>
                 </tr>

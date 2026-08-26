@@ -5,8 +5,9 @@ import AppLayout from "@/Layouts/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card";
 import { Badge } from "@/Components/ui/badge";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator, SelectLabel, SelectGroup,
 } from "@/Components/ui/select";
+import { getStatusBadgeClass, getStatusDotClass } from "@/lib/statusChamado";
 import { Button } from "@/Components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/Components/ui/tooltip";
 import {
@@ -181,6 +182,13 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
                   <SelectItem value="0">Aberto</SelectItem>
                   <SelectItem value="1">Em Andamento</SelectItem>
                   <SelectItem value="9">Resolvido</SelectItem>
+                  <SelectSeparator />
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px] text-slate-400">Outros status</SelectLabel>
+                    <SelectItem value="2">Aguardando Teste do Usuário</SelectItem>
+                    <SelectItem value="3">Pausado/Aguardando Peça</SelectItem>
+                    <SelectItem value="8">Cancelado</SelectItem>
+                  </SelectGroup>
                 </SelectContent>
               </Select>
 
@@ -375,14 +383,8 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
 
 function StatusPill({ status, label }) {
   return (
-    <span className={cn("inline-flex items-center gap-1.5 max-w-full text-xs font-semibold px-2 py-1 rounded-full",
-      status === 0 ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300" :
-      status === 1 ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" :
-      "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-    )}>
-      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0",
-        status === 0 ? "bg-blue-500" : status === 1 ? "bg-amber-500" : "bg-emerald-500"
-      )} />
+    <span className={cn("inline-flex items-center gap-1.5 max-w-full text-xs font-semibold px-2 py-1 rounded-full", getStatusBadgeClass(status))}>
+      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", getStatusDotClass(status))} />
       <span className="truncate">{label}</span>
     </span>
   );

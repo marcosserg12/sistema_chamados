@@ -23,6 +23,9 @@ use Inertia\Inertia;
 
 class ChamadoController extends Controller
 {
+    // Imagens comuns + PDF + Excel + PowerPoint. Sem tipos executáveis/scriptáveis.
+    private const MIMES_ANEXO = 'jpg,jpeg,png,gif,webp,bmp,pdf,xls,xlsx,csv,ppt,pptx';
+
     protected $chamadoService;
 
     public function __construct(\App\Services\ChamadoService $chamadoService)
@@ -137,6 +140,8 @@ class ChamadoController extends Controller
             'ds_descricao' => 'required|string',
             'st_grau' => 'nullable',
             'ds_patrimonio' => 'nullable|string',
+            'arquivos' => 'nullable|array',
+            'arquivos.*' => 'file|max:10240|mimes:' . self::MIMES_ANEXO,
         ]);
 
         $chamado = $this->chamadoService->criarChamado(
@@ -154,10 +159,11 @@ class ChamadoController extends Controller
      */
     public function show($id)
     {
-        $id_usuario_logado = auth()->user()->id_usuario;
+        $user = auth()->user();
+        $id_usuario_logado = $user->id_usuario;
 
-        $chamado = Chamado::with([
-            'solicitante', 'tecnico', 'empresa', 'localizacao', 
+        $chamado = Chamado::visivelPara($user)->with([
+            'solicitante', 'tecnico', 'empresa', 'localizacao',
             'tipoChamado', 'motivoPrincipal', 'motivoAssociado', 'anexos'
         ])->findOrFail($id);
 
@@ -203,8 +209,8 @@ class ChamadoController extends Controller
 
     public function getModalDetails($id)
     {
-        $chamado = Chamado::with([
-            'solicitante', 'tecnico', 'empresa', 'localizacao', 
+        $chamado = Chamado::visivelPara(auth()->user())->with([
+            'solicitante', 'tecnico', 'empresa', 'localizacao',
             'tipoChamado', 'motivoPrincipal', 'motivoAssociado', 'anexos'
         ])->findOrFail($id);
 
@@ -226,6 +232,11 @@ class ChamadoController extends Controller
 
     public function updatePrevisao(Request $request, $id)
     {
+        $user = auth()->user();
+        if (!in_array($user->id_perfil, [1, 4, 5])) {
+            abort(403);
+        }
+
         $request->validate(['dt_previsao_termino' => 'nullable|date']);
         $chamado = Chamado::findOrFail($id);
         $chamado->dt_previsao_termino = $request->dt_previsao_termino;
@@ -236,11 +247,17 @@ class ChamadoController extends Controller
 
     /**
      * Atualizar Chamado (Delegando para o Service)
+     * Restrito a Super Admin, Admin e Técnicos (1, 4, 5).
      */
     public function update(Request $request, $id)
     {
-        $chamado = Chamado::findOrFail($id);
         $user = auth()->user();
+
+        if (!in_array($user->id_perfil, [1, 4, 5])) {
+            abort(403);
+        }
+
+        $chamado = Chamado::findOrFail($id);
 
         // 1. Mudança de Status
         if ($request->has('st_status')) {
@@ -254,6 +271,12 @@ class ChamadoController extends Controller
 
         // 3. Edição de Dados
         if ($request->has('ds_titulo')) {
+            if ($request->hasFile('arquivos')) {
+                $request->validate([
+                    'arquivos.*' => 'file|max:10240|mimes:' . self::MIMES_ANEXO,
+                ]);
+            }
+
             $chamado->update($request->only([
                 'ds_titulo', 'ds_descricao', 'id_empresa', 'id_localizacao',
                 'id_tipo_chamado', 'id_motivo_principal', 'id_motivo_associado',
@@ -349,7 +372,7 @@ class ChamadoController extends Controller
     {
         $request->validate([
             'mensagem' => 'nullable|string',
-            'arquivo' => 'nullable|file|max:5120', // 5MB
+            'arquivo' => 'nullable|file|max:5120|mimes:' . self::MIMES_ANEXO, // 5MB
         ]);
 
         if (!$request->mensagem && !$request->hasFile('arquivo')) {

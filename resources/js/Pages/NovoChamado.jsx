@@ -40,6 +40,11 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
     arquivos: [],
   });
 
+  useEffect(() => {
+    console.log("[DEBUG-WATCH] id_motivo_principal mudou para:", JSON.stringify(data.id_motivo_principal), "| id_motivo_associado:", JSON.stringify(data.id_motivo_associado));
+    console.trace();
+  }, [data.id_motivo_principal, data.id_motivo_associado]);
+
   const [localizacoes, setLocalizacoes] = useState([]);
   const [motivos, setMotivos] = useState([]);
   const [detalhes, setDetalhes] = useState([]);
@@ -52,10 +57,15 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   const [carregandoIA, setCarregandoIA] = useState(false);
 
   const preencherComIA = async () => {
+    const callId = Math.random().toString(36).slice(2, 8);
+    console.log(`[DEBUG-IA ${callId}] ENTROU na função. guard atual=`, preenchendoComIARef.current);
     // Guarda síncrona: o estado "carregandoIA" só desabilita o botão depois
     // que o React re-renderiza, e um clique duplo rápido cabe nessa brecha.
     // Essa ref bloqueia na hora, sem depender de re-render.
-    if (preenchendoComIARef.current) return;
+    if (preenchendoComIARef.current) {
+      console.log(`[DEBUG-IA ${callId}] BLOQUEADO pelo guard, saindo.`);
+      return;
+    }
     if (descricaoIA.trim().length < 10) {
       toast.error("Descreva o problema com um pouco mais de detalhe.");
       return;
@@ -63,10 +73,12 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
     preenchendoComIARef.current = true;
     setCarregandoIA(true);
     try {
+      console.log(`[DEBUG-IA ${callId}] antes do axios.post`);
       const res = await axios.post("/api/chamados/sugestao-ia", {
         descricao: descricaoIA,
         id_empresa: data.id_empresa || undefined,
       });
+      console.log(`[DEBUG-IA ${callId}] depois do axios.post, res.data=`, JSON.stringify(res.data));
 
       if (!res.data.ok) {
         toast.error(res.data.erro || "Não foi possível preencher automaticamente.", { duration: 8000 });
@@ -76,6 +88,7 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
       const tipoId = String(res.data.id_tipo_chamado);
       const motivoId = String(res.data.id_motivo_principal);
       const detalheId = String(res.data.id_motivo_associado);
+      console.log(`[DEBUG-IA ${callId}] antes do setData. tipoId=${tipoId} motivoId=${motivoId} detalheId=${detalheId}`);
 
       // Não busca motivo/detalhe aqui: os efeitos em cascata do formulário já
       // fazem isso sozinhos assim que id_tipo_chamado/id_motivo_principal
@@ -83,15 +96,19 @@ export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
       // seguidos trocando a lista enquanto o Select ainda está de pé
       // quebravam o Portal do Radix).
       aiAcabouDePreencher.current = true;
-      setData((prev) => ({
-        ...prev,
-        ds_titulo: res.data.titulo || prev.ds_titulo,
-        id_tipo_chamado: tipoId,
-        id_motivo_principal: motivoId,
-        id_motivo_associado: detalheId,
-        st_grau: res.data.st_grau ? String(res.data.st_grau) : "",
-        ds_descricao: res.data.descricao || descricaoIA,
-      }));
+      setData((prev) => {
+        console.log(`[DEBUG-IA ${callId}] DENTRO do updater do setData. prev.id_motivo_principal=`, prev.id_motivo_principal, "-> novo:", motivoId);
+        return {
+          ...prev,
+          ds_titulo: res.data.titulo || prev.ds_titulo,
+          id_tipo_chamado: tipoId,
+          id_motivo_principal: motivoId,
+          id_motivo_associado: detalheId,
+          st_grau: res.data.st_grau ? String(res.data.st_grau) : "",
+          ds_descricao: res.data.descricao || descricaoIA,
+        };
+      });
+      console.log(`[DEBUG-IA ${callId}] depois do setData`);
 
       toast.success("Preenchido com IA — confira os campos abaixo antes de enviar.");
       setPainelIA(false);

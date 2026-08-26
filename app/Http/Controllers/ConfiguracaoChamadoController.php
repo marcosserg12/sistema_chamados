@@ -11,6 +11,14 @@ use Inertia\Inertia;
 
 class ConfiguracaoChamadoController extends Controller
 {
+    // Apenas Super Admin, Admin e Técnicos podem alterar tipos/motivos de chamado
+    private function checkAccess()
+    {
+        if (!in_array(auth()->user()->id_perfil, [1, 4, 5])) {
+            abort(403);
+        }
+    }
+
     public function index()
     {
         return Inertia::render('Motivos', [
@@ -23,6 +31,7 @@ class ConfiguracaoChamadoController extends Controller
 
     // ================== TIPO CHAMADO ==================
     public function storeTipo(Request $request) {
+        $this->checkAccess();
         $data = $request->validate(['ds_tipo_chamado' => 'required|string|max:200']);
         $data['st_ativo'] = 'A';
 
@@ -32,6 +41,7 @@ class ConfiguracaoChamadoController extends Controller
     }
 
     public function updateTipo(Request $request, $id) {
+        $this->checkAccess();
         $item = TipoChamado::findOrFail($id);
         // Adicionamos st_ativo como 'sometimes' para aceitar se vier no request
         $data = $request->validate([
@@ -45,6 +55,7 @@ class ConfiguracaoChamadoController extends Controller
 
     // ================== MOTIVO PRINCIPAL ==================
     public function storeMotivo(Request $request) {
+        $this->checkAccess();
         $data = $request->validate([
             'ds_descricao' => 'required|string|max:200',
             'id_tipo_chamado' => 'required|exists:tb_tipo_chamado,id_tipo_chamado'
@@ -56,6 +67,7 @@ class ConfiguracaoChamadoController extends Controller
     }
 
     public function updateMotivo(Request $request, $id) {
+        $this->checkAccess();
         $item = MotivoPrincipal::findOrFail($id);
         $data = $request->validate([
             'ds_descricao' => 'sometimes|required|string|max:200',
@@ -69,6 +81,7 @@ class ConfiguracaoChamadoController extends Controller
 
     // ================== MOTIVO ASSOCIADO ==================
     public function storeAssociado(Request $request) {
+        $this->checkAccess();
         $request->merge([
             'id_empresa' => ($request->id_empresa === 'null' || empty($request->id_empresa)) ? null : $request->id_empresa
         ]);
@@ -85,6 +98,7 @@ class ConfiguracaoChamadoController extends Controller
     }
 
     public function updateAssociado(Request $request, $id) {
+        $this->checkAccess();
         $item = MotivoAssociado::findOrFail($id);
 
         // Tratamento do null antes da validação

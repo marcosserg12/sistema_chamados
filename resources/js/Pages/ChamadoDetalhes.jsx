@@ -481,9 +481,19 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
         {/* ================= HEADER ================= */}
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
           <div className="flex-1">
-            <Link href="/chamados" className="inline-flex items-center text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors mb-4">
-              <ArrowLeft className="w-4 h-4 mr-1" /> Voltar para lista
-            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.history.length > 1) {
+                  window.history.back();
+                } else {
+                  router.visit('/chamados');
+                }
+              }}
+              className="inline-flex items-center text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors mb-4"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
+            </button>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight">

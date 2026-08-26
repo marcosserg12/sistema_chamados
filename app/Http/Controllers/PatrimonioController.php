@@ -65,20 +65,49 @@ class PatrimonioController extends Controller
         ]);
     }
 
+    // Apenas Admin (1) e Super Admin (5) gerenciam patrimônios
+    private function checkAccess()
+    {
+        if (!in_array(auth()->user()->id_perfil, [1, 5])) {
+            abort(403);
+        }
+    }
+
+    // Garante que um Admin (não Super Admin) só cadastre patrimônio nas empresas às quais tem acesso
+    private function checkEmpresaPermitida($idEmpresa)
+    {
+        $user = auth()->user();
+        if ($user->id_perfil == 5) {
+            return;
+        }
+
+        $idsPermitidos = $user->empresas()->pluck('tb_empresa.id_empresa')->map(fn($id) => (string) $id)->toArray();
+
+        if (!in_array((string) $idEmpresa, $idsPermitidos)) {
+            abort(403, 'Você não tem permissão para cadastrar patrimônio nessa empresa.');
+        }
+    }
+
     public function store(Request $request)
     {
+        $this->checkAccess();
+
         $request->validate([
             'ds_codigo' => 'required|unique:tb_patrimonio,ds_codigo',
             'id_tipo_produto' => 'required|exists:tb_tipo_produto,id_tipo_produto',
             'id_empresa' => 'required|exists:tb_empresa,id_empresa',
         ]);
 
-        Patrimonio::create($request->all());
+        $this->checkEmpresaPermitida($request->id_empresa);
+
+        Patrimonio::create($request->only(['ds_codigo', 'id_tipo_produto', 'ds_marca', 'ds_modelo', 'ds_num_serie', 'id_empresa']));
         return redirect()->back();
     }
 
     public function update(Request $request, $id)
     {
+        $this->checkAccess();
+
         $patrimonio = Patrimonio::findOrFail($id);
 
         $request->validate([
@@ -88,7 +117,9 @@ class PatrimonioController extends Controller
             'id_empresa' => 'required|exists:tb_empresa,id_empresa',
         ]);
 
-        $patrimonio->update($request->all());
+        $this->checkEmpresaPermitida($request->id_empresa);
+
+        $patrimonio->update($request->only(['ds_codigo', 'id_tipo_produto', 'ds_marca', 'ds_modelo', 'ds_num_serie', 'id_empresa']));
 
         return redirect()->back();
     }

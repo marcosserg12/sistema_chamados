@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useForm, Head } from '@inertiajs/react';
+import { useForm, Head, Link } from '@inertiajs/react';
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
 import { Label } from "@/Components/ui/label";
 import { Loader2, User, Lock, AlertCircle, Info, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-export default function Login() {
+export default function Login({ canResetPassword, status }) {
     const [showWelcome, setShowWelcome] = useState(false);
     const { data, setData, post, processing, errors, reset } = useForm({
         login: '',
@@ -59,7 +59,7 @@ export default function Login() {
                                 <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
                                     <Info className="w-8 h-8 text-blue-600" />
                                 </div>
-                                <h2 className="text-2xl font-bold text-slate-900 mb-4">Bem-vindo ao Novo Portal</h2>
+                                <h2 className="text-2xl font-bold text-slate-900 mb-4 font-display">Bem-vindo ao Novo Portal</h2>
                                 <p className="text-slate-600 leading-relaxed mb-6">
                                     Estamos de cara nova! O sistema de chamados do Grupo Ibra foi totalmente renovado para melhor atender você.
                                 </p>
@@ -120,10 +120,16 @@ export default function Login() {
                     <div className="p-10 sm:p-12 pt-4 bg-white">
                         <div className="flex items-center justify-center gap-3 mb-8">
                             <span className="h-[1px] w-8 bg-slate-200"></span>
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Portal de Acesso</h2>
+                            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 font-display">Portal de Acesso</h2>
                             <span className="h-[1px] w-8 bg-slate-200"></span>
                         </div>
-                        
+
+                        {status && (
+                            <div className="mb-6 flex items-center gap-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+                                {status}
+                            </div>
+                        )}
+
                         <form onSubmit={submit} className="space-y-7">
                             
                             <div className="space-y-2.5">
@@ -172,7 +178,7 @@ export default function Login() {
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between pt-1">
+                            <div className="flex items-center pt-1">
                                 <label className="flex items-center gap-3 cursor-pointer group">
                                     <div className="relative flex items-center justify-center">
                                         <input
@@ -196,9 +202,18 @@ export default function Login() {
                                 {processing ? (
                                     <Loader2 className="h-6 w-6 animate-spin relative z-10" />
                                 ) : (
-                                    <span className="relative z-10 tracking-[0.1em]">ACESSAR PORTAL</span>
+                                    <span className="relative z-10 tracking-[0.1em] font-display">ACESSAR PORTAL</span>
                                 )}
                             </Button>
+
+                            {canResetPassword && (
+                                <Link
+                                    href={route('password.request')}
+                                    className="block text-center text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors whitespace-nowrap"
+                                >
+                                    Esqueci minha senha
+                                </Link>
+                            )}
                         </form>
                     </div>
                 </div>

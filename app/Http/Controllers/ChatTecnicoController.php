@@ -38,7 +38,9 @@ class ChatTecnicoController extends Controller
 
         $request->validate([
             'mensagem' => 'nullable|string',
-            'arquivo' => 'nullable|file|max:5120', // 5MB
+            'arquivo' => 'nullable|file|max:20480|mimes:jpg,jpeg,png,gif,webp,bmp,svg,heic,ico,'
+                . 'mp3,wav,ogg,m4a,aac,weba,opus,'
+                . 'pdf,doc,docx,xls,xlsx,csv,ppt,pptx,txt,rtf,zip,rar,7z', // 20MB
         ]);
 
         if (!$request->mensagem && !$request->hasFile('arquivo')) {

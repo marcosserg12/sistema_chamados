@@ -85,11 +85,18 @@ class UsuarioController extends Controller
 
     public function store(Request $request)
     {
+        $user = auth()->user();
+
+        if (!in_array($user->id_perfil, [1, 5])) {
+            abort(403);
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:tb_usuario_laravel,ds_email',
             'login' => 'required|string|unique:tb_usuario_laravel,ds_usuario',
-            'role' => 'required',
+            // Perfil 5 (Super Admin) não pode ser atribuído por este formulário
+            'role' => 'required|in:1,2,3,4',
             // Agora validamos arrays
             'empresas' => 'required|array|min:1',
             'localizacoes' => 'array',
@@ -116,12 +123,20 @@ class UsuarioController extends Controller
 
     public function update(Request $request, $id)
     {
+        $user = auth()->user();
+
+        if (!in_array($user->id_perfil, [1, 5])) {
+            abort(403);
+        }
+
         $usuario = Usuario::findOrFail($id);
 
         $request->validate([
             'name' => 'required',
             'email' => 'required|email|unique:tb_usuario_laravel,ds_email,' . $id . ',id_usuario',
             'login' => 'required|unique:tb_usuario_laravel,ds_usuario,' . $id . ',id_usuario',
+            // Perfil 5 (Super Admin) não pode ser atribuído por este formulário
+            'role' => 'required|in:1,2,3,4',
             'empresas' => 'required|array|min:1',
             'localizacoes' => 'array',
         ]);

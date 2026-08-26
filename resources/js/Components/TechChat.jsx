@@ -124,6 +124,21 @@ export default function TechChat() {
         }
     }, [messages, isOpen]);
 
+    const handlePaste = (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (const item of items) {
+            if (item.kind === "file") {
+                const pastedFile = item.getAsFile();
+                if (pastedFile) {
+                    e.preventDefault();
+                    setFile(pastedFile);
+                }
+                break;
+            }
+        }
+    };
+
     const handleSend = async (e) => {
         e.preventDefault();
         if ((!newMessage.trim() && !file) || isSending) return;
@@ -178,7 +193,8 @@ export default function TechChat() {
         }
     };
 
-    const isImage = (path) => path && /\.(jpg|jpeg|png|gif|webp)$/i.test(path);
+    const isImage = (path) => path && /\.(jpg|jpeg|png|gif|webp|bmp|svg|heic|ico)$/i.test(path);
+    const isAudio = (path) => path && /\.(mp3|wav|ogg|m4a|aac|weba|opus)$/i.test(path);
 
     const renderMessageContent = (msg) => {
         const text = msg.ds_mensagem;
@@ -207,6 +223,8 @@ export default function TechChat() {
                         <a href={fileUrl} target={msg.ds_caminho_arquivo === "pending" ? "_self" : "_blank"} rel="noreferrer" className={cn("block rounded-lg overflow-hidden border border-white/10 hover:opacity-80 transition-opacity", msg.ds_caminho_arquivo === "pending" && "opacity-50 blur-[2px]")}>
                             <img src={msg.ds_caminho_arquivo === "pending" ? "/images/favicon.png" : fileUrl} alt="Anexo" className="max-w-full h-auto max-h-48 object-cover" />
                         </a>
+                    ) : isAudio(msg.ds_caminho_arquivo) ? (
+                        <audio controls src={fileUrl} className="w-full h-10" />
                     ) : (
                         <a href={fileUrl} target={msg.ds_caminho_arquivo === "pending" ? "_self" : "_blank"} rel="noreferrer" className={cn("flex items-center gap-2 p-2 bg-slate-800 rounded-lg border border-white/5 hover:bg-slate-700 transition-colors group/file", msg.ds_caminho_arquivo === "pending" && "opacity-50")}>
                             <div className="w-8 h-8 rounded bg-indigo-500/20 flex items-center justify-center shrink-0">
@@ -371,6 +389,7 @@ export default function TechChat() {
                                                 placeholder="Mensagem para equipe..."
                                                 value={newMessage}
                                                 onChange={(e) => setNewMessage(e.target.value)}
+                                                onPaste={handlePaste}
                                                 className="w-full bg-slate-900 border border-white/10 rounded-xl py-2.5 pl-4 pr-10 text-sm text-white focus:outline-none focus:border-indigo-500 transition-all placeholder:text-slate-600 font-medium"
                                             />
                                             <button

@@ -5,16 +5,16 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import axios from "axios";
 import { cn } from "@/lib/utils";
 import {
-    Ticket, Clock, AlertTriangle, MessageSquare, ArrowRight, User,
-    CheckSquare, Plus, Trash2, Calendar, X, Send, AlignLeft, ListTodo
+    Ticket, Clock, MessageSquare, ArrowRight,
+    CheckSquare, Plus, Trash2, Calendar, AlignLeft, ListTodo
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/Components/ui/avatar";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import Modal from "@/Components/Modal";
-import TextInput from "@/Components/TextInput";
-import SecondaryButton from "@/Components/SecondaryButton";
-import PrimaryButton from "@/Components/PrimaryButton";
+import { Dialog, DialogContent } from "@/Components/ui/dialog";
+import { Input } from "@/Components/ui/input";
+import { Textarea } from "@/Components/ui/textarea";
+import { Button } from "@/Components/ui/button";
 
 const KanbanBoard = ({ initialColumns, auth }) => {
     const [columns, setColumns] = useState(initialColumns);
@@ -129,7 +129,7 @@ const KanbanBoard = ({ initialColumns, auth }) => {
             <Head title="Quadro Kanban" />
             <div className="w-full h-[calc(102vh-145px)] flex flex-col pb-2 px-2 sm:px-4">
                 <div className="flex-none mb-3 mt-1">
-                    <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
+                    <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight font-display">
                         Quadro de Chamados
                     </h1>
                 </div>
@@ -146,7 +146,7 @@ const KanbanBoard = ({ initialColumns, auth }) => {
                                         column.id === '9' && "bg-emerald-50 border-emerald-200 border-b-emerald-500 dark:bg-emerald-900/10 dark:border-emerald-800/50 dark:border-b-emerald-600"
                                     )}>
                                         <h3 className={cn(
-                                            "font-black uppercase tracking-widest text-[11px]",
+                                            "font-black uppercase tracking-widest text-[11px] font-display",
                                             column.id === '0' && "text-blue-700 dark:text-blue-400",
                                             column.id === '1' && "text-amber-700 dark:text-amber-400",
                                             column.id === '9' && "text-emerald-700 dark:text-emerald-400"
@@ -166,8 +166,8 @@ const KanbanBoard = ({ initialColumns, auth }) => {
                                                 key={card.id_chamado}
                                                 onClick={() => openModal(card.id_chamado)}
                                                 className={cn(
-                                                    "mb-1.5 bg-white dark:bg-[#151c2c] p-2.5 rounded-lg border border-slate-200 dark:border-slate-700/50 hover:border-indigo-400 dark:hover:border-indigo-500 shadow-sm cursor-pointer select-none group transition-all",
-                                                    (column.id === '1' && card.id_tecnico === auth.user.id_usuario) ? "ring-2 ring-indigo-500/50 border-indigo-400 dark:border-indigo-500 bg-indigo-50/10 dark:bg-indigo-500/10" : ""
+                                                    "mb-1.5 bg-white dark:bg-[#151c2c] p-2.5 rounded-lg border border-slate-200 dark:border-slate-700/50 hover:border-blue-400 dark:hover:border-blue-500 shadow-sm cursor-pointer select-none group transition-all",
+                                                    (column.id === '1' && card.id_tecnico === auth.user.id_usuario) ? "ring-2 ring-blue-500/50 border-blue-400 dark:border-blue-500 bg-blue-50/10 dark:bg-blue-500/10" : ""
                                                 )}
                                             >
                                                 <div className="flex justify-between items-start mb-1 gap-2">
@@ -176,7 +176,7 @@ const KanbanBoard = ({ initialColumns, auth }) => {
                                                         #{card.id_chamado}
                                                     </div>
                                                 </div>
-                                                <h4 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 leading-tight mb-1.5 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                                <h4 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 leading-tight mb-1.5 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                                                     {card.ds_titulo}
                                                 </h4>
                                                 {card.ds_motivo && (
@@ -201,7 +201,7 @@ const KanbanBoard = ({ initialColumns, auth }) => {
                                                                     {card.ds_foto_tecnico ? (
                                                                         <img src={`/storage/${card.ds_foto_tecnico}`} className="object-cover" />
                                                                     ) : (
-                                                                        <AvatarFallback className="text-[6px] bg-indigo-500 text-white font-bold">{getInitials(card.ds_nome_tecnico)}</AvatarFallback>
+                                                                        <AvatarFallback className="text-[6px] bg-blue-500 text-white font-bold">{getInitials(card.ds_nome_tecnico)}</AvatarFallback>
                                                                 )}
                                                                 </Avatar>
                                                             </Tooltip>
@@ -223,207 +223,202 @@ const KanbanBoard = ({ initialColumns, auth }) => {
             </div>
 
             {/* Modal de Detalhes (Trello-style) */}
-            <Modal
-                show={isModalOpen}
-                onClose={closeModal}
-                maxWidth="7xl"
-                maxHeight="full"
-                className={modalLoading ? "bg-transparent shadow-none border-none" : "bg-white dark:bg-[#111827] shadow-2xl border border-slate-200 dark:border-slate-800"}
-            >
-                {modalLoading ? (
-                    <div className="flex items-center justify-center p-20 bg-transparent min-h-[500px]">
-                        <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
-                    </div>
-                ) : chamadoData ? (
-                    <div className="flex flex-col md:flex-row overflow-hidden h-full min-h-[750px]">
-
-
-                        {/* Lado Esquerdo: Conteúdo Principal */}
-                        <div className="flex-1 p-5 md:p-6 space-y-6 overflow-y-auto custom-scrollbar">
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 mb-1">
-                                    <Ticket className="w-3.5 h-3.5" />
-                                    <span className="text-[18px] font-black uppercase tracking-wider"><b>#{chamadoData.chamado.id_chamado}</b></span>
-                                </div>
-                                <h2 className="text-[18px] font-black tracking-tight text-slate-800 dark:text-slate-100 leading-tight">
-                                    <b>{chamadoData.chamado.ds_titulo}</b>
-                                </h2>
-                                <p className="text-[18px] font-bold text-indigo-500 uppercase tracking-widest pt-1">
-                                    <b>{columns[chamadoData.chamado.st_status]?.title}</b>
-                                </p>
-                            </div>
-
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold text-[18px] uppercase tracking-widest opacity-60">
-                                    <AlignLeft className="w-3 h-3" />
-                                    <h3><b>Descrição</b></h3>
-                                </div>
-                                <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-[18px] text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">
-                                    <b>{chamadoData.chamado.ds_descricao || "Sem descrição informada."}</b>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold text-[18px] uppercase tracking-widest opacity-60">
-                                        <ListTodo className="w-6 h-6" />
-                                        <h3><b>Checklist</b></h3>
-                                    </div>
-                                    <span className="text-[18px] font-black text-slate-400">
-                                        <b>{chamadoData.checklist.filter(i => i.st_concluido).length}/{chamadoData.checklist.length}</b>
-                                    </span>
-                                </div>
-                                <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                                    <div
-                                        className="bg-emerald-500 h-full transition-all duration-700 shadow-[0_0_8px_rgba(16,185,129,0.3)]"
-                                        style={{ width: `${chamadoData.checklist.length > 0 ? (chamadoData.checklist.filter(i => i.st_concluido).length / chamadoData.checklist.length) * 100 : 0}%` }}
-                                    ></div>
-                                </div>
-                                <div className="space-y-1 mt-4">
-                                    {chamadoData.checklist.map((item) => (
-                                        <div key={item.id_checklist} className="group flex items-center gap-3 p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-lg transition-all">
-                                            <button
-                                                onClick={() => handleToggleChecklist(item.id_checklist)}
-                                                className={cn(
-                                                    "w-6 h-6 rounded border flex items-center justify-center transition-all flex-none",
-                                                    item.st_concluido ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900"
-                                                )}
-                                            >
-                                                {item.st_concluido && <CheckSquare className="w-4 h-4" />}
-                                            </button>
-                                            <span className={cn(
-                                                "text-[18px] flex-1 transition-all",
-                                                item.st_concluido ? "text-slate-400 line-through opacity-60" : "text-slate-700 dark:text-slate-300"
-                                            )}>
-                                                <b>{item.ds_item}</b>
-                                            </span>
-                                            <button
-                                                onClick={() => handleDeleteChecklist(item.id_checklist)}
-                                                className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-rose-500 transition-all"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    <div className="pt-3 flex gap-2">
-                                        <input
-                                            className="flex-1 text-[18px] font-bold h-14 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 focus:ring-2 focus:ring-indigo-500/20 outline-none text-slate-800 dark:text-slate-200 placeholder:text-slate-500 shadow-sm"
-                                            placeholder="Novo item..."
-                                            value={newChecklistItem}
-                                            onChange={(e) => setNewChecklistItem(e.target.value)}
-                                            onKeyPress={(e) => e.key === 'Enter' && handleAddChecklistItem()}
-                                        />
-                                        <button
-                                            onClick={handleAddChecklistItem}
-                                            className="h-14 w-14 flex items-center justify-center bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-all shadow-md active:scale-95"
-                                        >
-                                            <Plus className="w-6 h-14" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4 pt-2">
-                                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold text-[18px] uppercase tracking-widest opacity-60">
-                                    <MessageSquare className="w-6 h-6" />
-                                    <h3><b>Notas Board</b></h3>
-                                </div>
-                                <div className="space-y-3">
-                                    <textarea
-                                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-[18px] font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all resize-none min-h-[80px] text-slate-800 dark:text-slate-200 placeholder:text-slate-500 shadow-sm"
-                                        placeholder="Nota interna rápida..."
-                                        value={newComment}
-                                        onChange={(e) => setNewComment(e.target.value)}
-                                    ></textarea>
-                                    <button
-                                        onClick={handleAddComment}
-                                        disabled={!newComment.trim()}
-                                        className="text-[15px] font-black uppercase tracking-[0.1em] py-2 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 transition-all shadow-lg active:scale-95"
-                                    >
-                                        <b>Gravar Nota</b>
-                                    </button>
-                                </div>
-                                <div className="space-y-4 mt-6">
-                                    {chamadoData.comentarios.map((c) => (
-                                        <div key={c.id_observacao} className="flex flex-col bg-slate-50 dark:bg-slate-800/30 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-[18px] font-black text-slate-700 dark:text-slate-200 uppercase"><b>{c.usuario?.ds_nome}</b></span>
-                                                <span className="text-[14px] font-bold text-slate-400"><b>{formatDistanceToNow(new Date(c.dt_criacao), { addSuffix: true, locale: ptBR })}</b></span>
-                                            </div>
-                                            <div className="text-[18px] leading-relaxed text-slate-600 dark:text-slate-400">
-                                                <b>{c.ds_observacao}</b>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+            <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) closeModal(); }}>
+                <DialogContent
+                    className={cn(
+                        "p-0 gap-0 overflow-hidden sm:max-w-6xl w-[95vw] max-h-[90vh] rounded-2xl",
+                        modalLoading ? "bg-transparent shadow-none border-none" : "bg-white dark:bg-[#111827] shadow-2xl border border-slate-200 dark:border-slate-800"
+                    )}
+                >
+                    {modalLoading ? (
+                        <div className="flex items-center justify-center p-20 bg-transparent min-h-[500px]">
+                            <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
                         </div>
+                    ) : chamadoData ? (
+                        <div className="flex flex-col md:flex-row overflow-hidden h-full min-h-[750px] max-h-[90vh]">
 
-                        <div className="w-full md:w-[250px] bg-slate-50/50 dark:bg-[#0c1222]/50 p-5 space-y-6 flex flex-col border-l border-slate-100 dark:border-slate-800">
-                            <div className="space-y-5">
-                                <h4 className="text-[14px] font-black uppercase tracking-[0.2em] text-slate-400"><b>Gestão</b></h4>
-                                <div className="space-y-1.5">
-                                    <label className="flex items-center gap-1.5 text-[14px] font-black text-slate-500 uppercase">
-                                        <Calendar className="w-4 h-4 text-indigo-500" />
-                                        <b>Prazo</b>
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-[14px] font-black text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-indigo-500/20 outline-none shadow-sm transition-all"
-                                        value={chamadoData.chamado.dt_previsao_termino ? format(new Date(chamadoData.chamado.dt_previsao_termino), "yyyy-MM-dd'T'HH:mm") : ""}
-                                        onChange={handleUpdatePrevisao}
-                                    />
+                            {/* Lado Esquerdo: Conteúdo Principal */}
+                            <div className="flex-1 p-5 md:p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 mb-1">
+                                        <Ticket className="w-3.5 h-3.5" />
+                                        <span className="text-[13px] font-black uppercase tracking-wider font-display">#{chamadoData.chamado.id_chamado}</span>
+                                    </div>
+                                    <h2 className="text-[20px] font-black tracking-tight text-slate-800 dark:text-slate-100 leading-tight font-display">
+                                        {chamadoData.chamado.ds_titulo}
+                                    </h2>
+                                    <p className="text-[13px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest pt-1">
+                                        {columns[chamadoData.chamado.st_status]?.title}
+                                    </p>
                                 </div>
-                                <Link
-                                    href={`/chamados/${chamadoData.chamado.id_chamado}`}
-                                    className="flex items-center justify-center gap-2 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-lg text-[14px] font-black text-slate-600 dark:text-slate-300 hover:bg-indigo-600 hover:text-white transition-all shadow-sm group active:scale-95"
-                                >
-                                    <b>Ver Chamado</b>
-                                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                                </Link>
-                            </div>
-                            <div className="space-y-5 pt-5 mt-auto border-t border-slate-200 dark:border-slate-800">
+
                                 <div className="space-y-3">
-                                    <div className="flex items-center gap-2.5">
-                                        <Avatar className="w-10 h-10 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
-                                            {chamadoData.chamado.solicitante?.ds_foto ? (
-                                                <img src={`/storage/${chamadoData.chamado.solicitante.ds_foto}`} className="object-cover" />
-                                            ) : (
-                                                <AvatarFallback className="text-[12px] bg-slate-100 dark:bg-slate-800 text-slate-500 font-black">{getInitials(chamadoData.chamado.solicitante?.ds_nome)}</AvatarFallback>
-                                            )}
-                                        </Avatar>
-                                        <div className="flex flex-col min-w-0">
-                                            <span className="text-[10px] text-slate-400 font-black uppercase"><b>Dono</b></span>
-                                            <span className="text-[14px] font-bold text-slate-700 dark:text-slate-200 truncate"><b>{chamadoData.chamado.solicitante?.ds_nome}</b></span>
+                                    <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold text-[11px] uppercase tracking-widest opacity-60">
+                                        <AlignLeft className="w-3 h-3" />
+                                        <h3>Descrição</h3>
+                                    </div>
+                                    <div className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">
+                                        {chamadoData.chamado.ds_descricao || "Sem descrição informada."}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold text-[11px] uppercase tracking-widest opacity-60">
+                                            <ListTodo className="w-4 h-4" />
+                                            <h3>Checklist</h3>
+                                        </div>
+                                        <span className="text-xs font-black text-slate-400">
+                                            {chamadoData.checklist.filter(i => i.st_concluido).length}/{chamadoData.checklist.length}
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                        <div
+                                            className="bg-emerald-500 h-full transition-all duration-700 shadow-[0_0_8px_rgba(16,185,129,0.3)]"
+                                            style={{ width: `${chamadoData.checklist.length > 0 ? (chamadoData.checklist.filter(i => i.st_concluido).length / chamadoData.checklist.length) * 100 : 0}%` }}
+                                        ></div>
+                                    </div>
+                                    <div className="space-y-1 mt-4">
+                                        {chamadoData.checklist.map((item) => (
+                                            <div key={item.id_checklist} className="group flex items-center gap-3 p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-lg transition-all">
+                                                <button
+                                                    onClick={() => handleToggleChecklist(item.id_checklist)}
+                                                    className={cn(
+                                                        "w-6 h-6 rounded border flex items-center justify-center transition-all flex-none",
+                                                        item.st_concluido ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900"
+                                                    )}
+                                                >
+                                                    {item.st_concluido && <CheckSquare className="w-4 h-4" />}
+                                                </button>
+                                                <span className={cn(
+                                                    "text-sm flex-1 transition-all",
+                                                    item.st_concluido ? "text-slate-400 line-through opacity-60" : "text-slate-700 dark:text-slate-300"
+                                                )}>
+                                                    {item.ds_item}
+                                                </span>
+                                                <button
+                                                    onClick={() => handleDeleteChecklist(item.id_checklist)}
+                                                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-300 hover:text-rose-500 transition-all"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <div className="pt-3 flex gap-2">
+                                            <Input
+                                                className="flex-1 h-11 text-sm font-medium bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-lg focus-visible:ring-blue-500/30"
+                                                placeholder="Novo item..."
+                                                value={newChecklistItem}
+                                                onChange={(e) => setNewChecklistItem(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleAddChecklistItem()}
+                                            />
+                                            <Button
+                                                onClick={handleAddChecklistItem}
+                                                size="icon"
+                                                className="h-11 w-11 bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md"
+                                            >
+                                                <Plus className="w-5 h-5" />
+                                            </Button>
                                         </div>
                                     </div>
-                                    {chamadoData.chamado.tecnico && (
+                                </div>
+
+                                <div className="space-y-4 pt-2">
+                                    <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold text-[11px] uppercase tracking-widest opacity-60">
+                                        <MessageSquare className="w-4 h-4" />
+                                        <h3>Notas do Board</h3>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <Textarea
+                                            className="w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm font-medium focus-visible:ring-blue-500/30 resize-none min-h-[80px]"
+                                            placeholder="Nota interna rápida..."
+                                            value={newComment}
+                                            onChange={(e) => setNewComment(e.target.value)}
+                                        />
+                                        <Button
+                                            onClick={handleAddComment}
+                                            disabled={!newComment.trim()}
+                                            className="text-xs font-black uppercase tracking-[0.1em] h-10 px-4 rounded-lg bg-blue-600 hover:bg-blue-700"
+                                        >
+                                            Gravar Nota
+                                        </Button>
+                                    </div>
+                                    <div className="space-y-4 mt-6">
+                                        {chamadoData.comentarios.map((c) => (
+                                            <div key={c.id_observacao} className="flex flex-col bg-slate-50 dark:bg-slate-800/30 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase">{c.usuario?.ds_nome}</span>
+                                                    <span className="text-[11px] font-bold text-slate-400">{formatDistanceToNow(new Date(c.dt_criacao), { addSuffix: true, locale: ptBR })}</span>
+                                                </div>
+                                                <div className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                                                    {c.ds_observacao}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="w-full md:w-[250px] bg-slate-50/50 dark:bg-[#0c1222]/50 p-5 space-y-6 flex flex-col border-l border-slate-100 dark:border-slate-800 overflow-y-auto custom-scrollbar">
+                                <div className="space-y-5">
+                                    <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Gestão</h4>
+                                    <div className="space-y-1.5">
+                                        <label className="flex items-center gap-1.5 text-[11px] font-black text-slate-500 uppercase">
+                                            <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                                            Prazo
+                                        </label>
+                                        <Input
+                                            type="datetime-local"
+                                            className="w-full h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-lg text-[13px] font-bold text-slate-700 dark:text-slate-300 focus-visible:ring-blue-500/30"
+                                            value={chamadoData.chamado.dt_previsao_termino ? format(new Date(chamadoData.chamado.dt_previsao_termino), "yyyy-MM-dd'T'HH:mm") : ""}
+                                            onChange={handleUpdatePrevisao}
+                                        />
+                                    </div>
+                                    <Link
+                                        href={`/chamados/${chamadoData.chamado.id_chamado}`}
+                                        className="flex items-center justify-center gap-2 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-lg text-[13px] font-black text-slate-600 dark:text-slate-300 hover:bg-blue-600 hover:text-white transition-all shadow-sm group active:scale-95"
+                                    >
+                                        Ver Chamado
+                                        <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                                    </Link>
+                                </div>
+                                <div className="space-y-5 pt-5 mt-auto border-t border-slate-200 dark:border-slate-800">
+                                    <div className="space-y-3">
                                         <div className="flex items-center gap-2.5">
-                                            <Avatar className="w-10 h-10 shadow-sm ring-1 ring-indigo-500/20">
-                                                {chamadoData.chamado.tecnico.ds_foto ? (
-                                                    <img src={`/storage/${chamadoData.chamado.tecnico.ds_foto}`} className="object-cover" />
+                                            <Avatar className="w-10 h-10 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
+                                                {chamadoData.chamado.solicitante?.ds_foto ? (
+                                                    <img src={`/storage/${chamadoData.chamado.solicitante.ds_foto}`} className="object-cover" />
                                                 ) : (
-                                                    <AvatarFallback className="text-[12px] bg-indigo-600 text-white font-black">{getInitials(chamadoData.chamado.tecnico.ds_nome)}</AvatarFallback>
+                                                    <AvatarFallback className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-500 font-black">{getInitials(chamadoData.chamado.solicitante?.ds_nome)}</AvatarFallback>
                                                 )}
                                             </Avatar>
                                             <div className="flex flex-col min-w-0">
-                                                <span className="text-[10px] text-indigo-500 font-black uppercase"><b>Técnico</b></span>
-                                                <span className="text-[14px] font-bold text-slate-700 dark:text-slate-200 truncate"><b>{chamadoData.chamado.tecnico.ds_nome}</b></span>
+                                                <span className="text-[10px] text-slate-400 font-black uppercase">Dono</span>
+                                                <span className="text-[13px] font-bold text-slate-700 dark:text-slate-200 truncate">{chamadoData.chamado.solicitante?.ds_nome}</span>
                                             </div>
                                         </div>
-                                    )}
+                                        {chamadoData.chamado.tecnico && (
+                                            <div className="flex items-center gap-2.5">
+                                                <Avatar className="w-10 h-10 shadow-sm ring-1 ring-blue-500/20">
+                                                    {chamadoData.chamado.tecnico.ds_foto ? (
+                                                        <img src={`/storage/${chamadoData.chamado.tecnico.ds_foto}`} className="object-cover" />
+                                                    ) : (
+                                                        <AvatarFallback className="text-xs bg-blue-600 text-white font-black">{getInitials(chamadoData.chamado.tecnico.ds_nome)}</AvatarFallback>
+                                                    )}
+                                                </Avatar>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="text-[10px] text-blue-500 font-black uppercase">Técnico</span>
+                                                    <span className="text-[13px] font-bold text-slate-700 dark:text-slate-200 truncate">{chamadoData.chamado.tecnico.ds_nome}</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <button
-                            onClick={closeModal}
-                            className="absolute top-3 right-3 p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 shadow-xl transition-all active:scale-90 md:hidden"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
-                    </div>
-                ) : null}
-            </Modal>
+                    ) : null}
+                </DialogContent>
+            </Dialog>
 
             <style dangerouslySetInnerHTML={{__html: `
                 .custom-scrollbar::-webkit-scrollbar {

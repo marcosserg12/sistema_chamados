@@ -78,13 +78,41 @@ class LocalizacaoController extends Controller
     }
 
 
+    // Apenas Admin (1) e Super Admin (5) gerenciam localizações
+    private function checkAccess()
+    {
+        if (!in_array(auth()->user()->id_perfil, [1, 5])) {
+            abort(403);
+        }
+    }
+
+    // Garante que um Admin (não Super Admin) só vincule empresas às quais tem acesso
+    private function checkEmpresasPermitidas(array $empresasIds)
+    {
+        $user = auth()->user();
+        if ($user->id_perfil == 5) {
+            return;
+        }
+
+        $idsPermitidos = $user->empresas()->pluck('tb_empresa.id_empresa')->map(fn($id) => (string) $id)->toArray();
+        $idsSolicitados = array_map('strval', $empresasIds);
+
+        if (count(array_diff($idsSolicitados, $idsPermitidos)) > 0) {
+            abort(403, 'Você não tem permissão para vincular uma ou mais empresas selecionadas.');
+        }
+    }
+
     public function store(Request $request)
     {
+        $this->checkAccess();
+
         $request->validate([
             'nome' => 'required|string|max:255',
             'empresas' => 'required|array', // Array de IDs
             'empresas.*' => 'exists:tb_empresa,id_empresa'
         ]);
+
+        $this->checkEmpresasPermitidas($request->empresas);
 
         $localizacao = Localizacao::create([
             'ds_localizacao' => $request->nome,
@@ -99,6 +127,8 @@ class LocalizacaoController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->checkAccess();
+
         $localizacao = Localizacao::findOrFail($id);
 
         $request->validate([
@@ -106,6 +136,8 @@ class LocalizacaoController extends Controller
             'empresas' => 'required|array',
             'empresas.*' => 'exists:tb_empresa,id_empresa'
         ]);
+
+        $this->checkEmpresasPermitidas($request->empresas);
 
         $localizacao->update([
             'ds_localizacao' => $request->nome,
@@ -119,6 +151,8 @@ class LocalizacaoController extends Controller
 
     public function toggleStatus($id)
     {
+        $this->checkAccess();
+
         $loc = Localizacao::findOrFail($id);
         $loc->st_ativo = ($loc->st_ativo === 'A') ? 'I' : 'A';
         $loc->save();

@@ -17,6 +17,11 @@ export default {
     			sans: [
     				'Figtree',
                     ...defaultTheme.fontFamily.sans
+                ],
+    			display: [
+    				'"Bricolage Grotesque"',
+    				'Figtree',
+                    ...defaultTheme.fontFamily.sans
                 ]
     		},
     		borderRadius: {

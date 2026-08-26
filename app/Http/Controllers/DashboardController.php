@@ -64,11 +64,12 @@ class DashboardController extends Controller
 
         if ($id_perfil == 1 || $id_perfil == 4 || $id_perfil == 5) {
 
-            // Gráfico de Pizza: Agora respeita a visibilidade (Meus + Abertos)
+            // Gráfico de Pizza: Visão Global real do sistema (todos os chamados,
+            // não apenas os "meus + abertos" usados nas KPIs pessoais acima)
             $graficoStatus = [
-                'abertos' => (clone $queryUsuario)->where('st_status', 0)->count(),
-                'emAndamento' => (clone $queryUsuario)->where('st_status', 1)->count(),
-                'resolvidos' => (clone $queryUsuario)->where('st_status', 9)->count(),
+                'abertos' => Chamado::whereIn('st_status', StatusChamado::GRUPO_ABERTO)->count(),
+                'emAndamento' => Chamado::whereIn('st_status', StatusChamado::GRUPO_EM_ANDAMENTO)->count(),
+                'resolvidos' => Chamado::whereIn('st_status', StatusChamado::GRUPO_RESOLVIDO)->count(),
             ];
 
             // Tendência Semanal
@@ -83,7 +84,10 @@ class DashboardController extends Controller
 
                 $trendSemanal[] = [
                     'dia' => ucfirst($data->locale('pt_BR')->shortDayName),
-                    'total' => Chamado::visivelNoDashboard($user)->whereDate('dt_data_chamado', $dataStr)->count(), 
+                    // "Total" precisa contar TODOS os chamados do dia, não só os que
+                    // ainda estão abertos ou atribuídos a mim — senão um chamado já
+                    // resolvido ou atribuído a outro técnico some do total retroativamente.
+                    'total' => Chamado::whereDate('dt_data_chamado', $dataStr)->count(),
                     'meus' => $meusChamadosQuery->whereDate('dt_data_chamado', $dataStr)->count(),
                 ];
             }

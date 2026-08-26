@@ -11,12 +11,14 @@ import {
     SelectValue,
     SelectSeparator,
     SelectLabel,
+    SelectGroup,
 } from "@/Components/ui/select";
 import { Search, Inbox, Activity, CheckCircle2, User, MapPin, Tag, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/Components/ui/avatar";
+import { StatusBadge } from "@/Components/ui/StatusBadge";
 
 export default function Chamados({ chamados, tecnicos, solicitantes = [], localizacoes = [], stats, filters }) {
     const { auth } = usePage().props;
@@ -59,37 +61,6 @@ export default function Chamados({ chamados, tecnicos, solicitantes = [], locali
         return () => clearTimeout(delayDebounceFn);
     }, [search, status, tecnico, solicitante, localizacao]);
 
-    // =========================================================================
-    // RENDERIZADOR DE STATUS
-    // =========================================================================
-    const renderStatus = (statusId) => {
-        switch (String(statusId)) {
-            case "0":
-                return (
-                    <span className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300 dark:border dark:border-blue-500/30 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide whitespace-nowrap">
-                        Aberto
-                    </span>
-                );
-            case "1":
-                return (
-                    <span className="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 dark:border dark:border-amber-500/30 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide whitespace-nowrap">
-                        Em Andamento
-                    </span>
-                );
-            case "9":
-                return (
-                    <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border dark:border-emerald-500/30 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide whitespace-nowrap">
-                        Resolvido
-                    </span>
-                );
-            default:
-                return (
-                    <span className="bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-300 dark:border dark:border-slate-600/50 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide whitespace-nowrap">
-                        Desconhecido
-                    </span>
-                );
-        }
-    };
 
     return (
         <AppLayout>
@@ -98,7 +69,7 @@ export default function Chamados({ chamados, tecnicos, solicitantes = [], locali
             <div className="max-w-full mx-auto pb-6">
                 {/* CABEÇALHO E FILTROS */}
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6">
-                    <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight flex-shrink-0">
+                    <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight flex-shrink-0 font-display">
                         Todos os Chamados
                     </h1>
 
@@ -113,10 +84,12 @@ export default function Chamados({ chamados, tecnicos, solicitantes = [], locali
                                 <SelectItem value="1" className="text-[14px] dark:focus:bg-slate-700 font-medium">Em Andamento</SelectItem>
                                 <SelectItem value="9" className="text-[14px] dark:focus:bg-slate-700 font-medium">Resolvido</SelectItem>
                                 <SelectSeparator />
-                                <SelectLabel className="text-[11px] text-slate-400">Outros status</SelectLabel>
-                                <SelectItem value="2" className="text-[14px] dark:focus:bg-slate-700 font-medium">Aguardando Teste do Usuário</SelectItem>
-                                <SelectItem value="3" className="text-[14px] dark:focus:bg-slate-700 font-medium">Pausado/Aguardando Peça</SelectItem>
-                                <SelectItem value="8" className="text-[14px] dark:focus:bg-slate-700 font-medium">Cancelado</SelectItem>
+                                <SelectGroup>
+                                    <SelectLabel className="text-[11px] text-slate-400">Outros status</SelectLabel>
+                                    <SelectItem value="2" className="text-[14px] dark:focus:bg-slate-700 font-medium">Aguardando Teste do Usuário</SelectItem>
+                                    <SelectItem value="3" className="text-[14px] dark:focus:bg-slate-700 font-medium">Pausado/Aguardando Peça</SelectItem>
+                                    <SelectItem value="8" className="text-[14px] dark:focus:bg-slate-700 font-medium">Cancelado</SelectItem>
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
 
@@ -335,7 +308,7 @@ export default function Chamados({ chamados, tecnicos, solicitantes = [], locali
                                             </td>
 
                                             <td className="px-4 py-3.5 text-center">
-                                                {renderStatus(chamado.st_status)}
+                                                <StatusBadge status={Number(chamado.st_status)} />
                                             </td>
                                             <td className="px-4 py-3.5 text-slate-500 dark:text-slate-400 font-medium">
                                                 {format(
