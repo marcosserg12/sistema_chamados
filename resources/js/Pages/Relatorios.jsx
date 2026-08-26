@@ -41,7 +41,11 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
       preserveScroll: true,
       replace: true,
     });
-  }, [status, tecnico, tipo, personalizado, dataInicio, dataFim]);
+    // Intentionally only [status, tecnico, tipo]: personalizado/dataInicio/dataFim are read
+    // from the latest render's closure when a filter changes (correct, no staleness), but
+    // must NOT trigger this effect on their own — the date inputs update independently
+    // (before "Aplicar" is clicked) and toggling the switch has its own explicit handlers below.
+  }, [status, tecnico, tipo]);
 
   return (
     <AppLayout>
@@ -79,7 +83,16 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
                 <button onClick={aplicarPersonalizado} className="h-9 px-3 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
                   Aplicar
                 </button>
-                <button onClick={() => setPersonalizado(false)} className="text-xs text-slate-500 hover:underline">
+                <button
+                  onClick={() => {
+                    setPersonalizado(false);
+                    // No "inicio" param: lets the backend recompute the canonical
+                    // Tuesday-anchored cycle instead of reusing a possibly
+                    // non-Tuesday custom start date.
+                    router.get("/relatorios", { status, tecnico, tipo }, { preserveState: true, preserveScroll: true });
+                  }}
+                  className="text-xs text-slate-500 hover:underline"
+                >
                   Voltar pro ciclo semanal
                 </button>
               </div>
