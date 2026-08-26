@@ -78,7 +78,7 @@
     </div>
 
     @if(count($cargaPorTecnico) > 0)
-        @php $maxCarga = max(array_column($cargaPorTecnico, 'value')); @endphp
+        @php $maxCarga = collect($cargaPorTecnico)->max('value'); @endphp
         <h2 class="secao">Carga por Técnico no Período</h2>
         @foreach ($cargaPorTecnico as $tec)
             <div class="chart-row">
