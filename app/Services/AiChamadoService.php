@@ -21,7 +21,7 @@ class AiChamadoService
      * sistema. Nunca inventa um id fora da árvore — a resposta é validada
      * contra a taxonomia real antes de ser devolvida.
      *
-     * @return array{ok: bool, titulo?: string, id_tipo_chamado?: int, id_motivo_principal?: int, id_motivo_associado?: int, st_grau?: int|null, erro?: string}
+     * @return array{ok: bool, titulo?: string, descricao?: string, id_tipo_chamado?: int, id_motivo_principal?: int, id_motivo_associado?: int, st_grau?: int|null, erro?: string}
      */
     public function sugerirClassificacao(string $descricao, ?int $idEmpresa = null): array
     {
@@ -42,7 +42,11 @@ class AiChamadoService
             'properties' => [
                 'titulo' => [
                     'type' => 'string',
-                    'description' => 'Título curto e objetivo do chamado (até 100 caracteres), em português, resumindo o problema.',
+                    'description' => 'Título curto e objetivo do chamado (até 100 caracteres), em português, resumindo o problema de forma específica (não genérica).',
+                ],
+                'descricao' => [
+                    'type' => 'string',
+                    'description' => 'Descrição completa do chamado para o técnico, em português, reescrevendo o relato do usuário de forma clara e completa (corrija ortografia, organize em frases completas). Baseie-se só no que o usuário disse — não invente detalhes, números de série, horários ou informações que ele não mencionou.',
                 ],
                 // Atenção: a API do Gemini exige que os valores de "enum" venham como
                 // string, mesmo quando "type" é "integer" (erro 400 "TYPE_STRING"
@@ -57,34 +61,53 @@ class AiChamadoService
                     'description' => 'Use 0 quando id_motivo_principal não for o motivo "Cadastro de Paciente" (id 6). Quando for 6: 1=Melhoria, 2=Problema, 3=Cadastro de Paciente, 4=Relatório.',
                 ],
             ],
-            'required' => ['titulo', 'id_tipo_chamado', 'id_motivo_principal', 'id_motivo_associado', 'st_grau'],
+            'required' => ['titulo', 'descricao', 'id_tipo_chamado', 'id_motivo_principal', 'id_motivo_associado', 'st_grau'],
         ];
 
-        try {
-            $response = Http::timeout(20)
-                ->post(self::ENDPOINT . self::MODELO . ':generateContent?key=' . $apiKey, [
-                    'systemInstruction' => [
-                        'parts' => [['text' => $this->montarPromptSistema($taxonomia)]],
-                    ],
-                    'contents' => [
-                        ['role' => 'user', 'parts' => [['text' => $descricao]]],
-                    ],
-                    'generationConfig' => [
-                        'responseMimeType' => 'application/json',
-                        'responseSchema' => $schema,
-                    ],
-                ]);
+        $corpo = [
+            'systemInstruction' => [
+                'parts' => [['text' => $this->montarPromptSistema($taxonomia)]],
+            ],
+            'contents' => [
+                ['role' => 'user', 'parts' => [['text' => $descricao]]],
+            ],
+            'generationConfig' => [
+                'responseMimeType' => 'application/json',
+                'responseSchema' => $schema,
+            ],
+        ];
 
-            if ($response->failed()) {
+        // A camada gratuita da API do Gemini ocasionalmente responde 503
+        // (sobrecarga temporária do modelo) — tenta mais uma vez antes de
+        // desistir, em vez de já mostrar erro pra pessoa.
+        $maxTentativas = 2;
+        $response = null;
+
+        for ($tentativa = 1; $tentativa <= $maxTentativas; $tentativa++) {
+            try {
+                $response = Http::timeout(30)
+                    ->post(self::ENDPOINT . self::MODELO . ':generateContent?key=' . $apiKey, $corpo);
+            } catch (\Throwable $e) {
+                if ($tentativa === $maxTentativas) {
+                    Log::warning('Erro ao consultar Gemini para sugestão de chamado: ' . $e->getMessage());
+                    return ['ok' => false, 'erro' => 'Não foi possível consultar a IA agora. Tente novamente ou preencha manualmente.'];
+                }
+                continue;
+            }
+
+            if ($response->successful()) {
+                break;
+            }
+
+            if ($response->status() !== 503 || $tentativa === $maxTentativas) {
                 Log::warning('Falha ao consultar Gemini para sugestão de chamado: ' . $response->body());
                 return ['ok' => false, 'erro' => 'Não foi possível consultar a IA agora. Tente novamente ou preencha manualmente.'];
             }
 
-            $texto = $response->json('candidates.0.content.parts.0.text');
-        } catch (\Throwable $e) {
-            Log::warning('Erro ao consultar Gemini para sugestão de chamado: ' . $e->getMessage());
-            return ['ok' => false, 'erro' => 'Não foi possível consultar a IA agora. Tente novamente ou preencha manualmente.'];
+            usleep(800000); // meio segundo antes de tentar de novo
         }
+
+        $texto = $response->json('candidates.0.content.parts.0.text');
 
         $dados = is_string($texto) ? json_decode($texto, true) : null;
 
@@ -200,6 +223,7 @@ class AiChamadoService
         $linhas[] = '- id_motivo_principal deve pertencer ao id_tipo_chamado escolhido, e id_motivo_associado deve pertencer ao id_motivo_principal escolhido (siga a árvore acima).';
         $linhas[] = '- st_grau só é diferente de 0 quando id_motivo_principal for 6 (Cadastro de Paciente): 1=Melhoria, 2=Problema, 3=Cadastro de Paciente, 4=Relatório, conforme o que a pessoa está pedindo. Nos demais casos, st_grau=0.';
         $linhas[] = '- titulo deve ser curto (até 100 caracteres), em português, resumindo o problema — não copie a descrição inteira.';
+        $linhas[] = '- descricao deve reescrever o relato do usuário de forma clara, completa e bem escrita (corrija erros de português, organize em frases completas), mantendo só as informações que ele realmente deu — não invente nada novo.';
         $linhas[] = '- Se a descrição não tiver detalhe suficiente pra decidir com confiança, escolha a opção mais genérica/provável dentro da árvore — a pessoa revisa tudo antes de enviar o chamado.';
 
         return implode("\n", $linhas);
@@ -233,6 +257,7 @@ class AiChamadoService
                     return [
                         'ok' => true,
                         'titulo' => mb_substr(trim((string) ($dados['titulo'] ?? '')), 0, 120),
+                        'descricao' => trim((string) ($dados['descricao'] ?? '')),
                         'id_tipo_chamado' => $tipo['id'],
                         'id_motivo_principal' => $motivo['id'],
                         'id_motivo_associado' => $detalhe['id'],
