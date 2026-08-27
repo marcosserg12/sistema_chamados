@@ -49,7 +49,11 @@ import {
   Lock,
   Check,
   CheckCheck,
-  File as FileIcon
+  File as FileIcon,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX
 } from "lucide-react";
 import { format, formatDistanceToNow, isPast } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -59,6 +63,7 @@ import axios from "axios";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { STATUS, STATUS_LIST, STATUS_SECUNDARIOS, getStatusLabel } from "@/lib/statusChamado";
+import { useGravadorAudio, useLeitor } from "@/hooks/use-voz";
 
 export default function ChamadoDetalhes({ chamado, historico = [], chat = [], tecnicos = [], empresas = [], tiposChamado = [] }) {
   const [comentario, setComentario] = useState("");
@@ -197,6 +202,53 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
             });
         }
     });
+  };
+
+  // Mensagem de voz: grava e envia direto, sem passar pelo campo de texto.
+  const gravadorChat = useGravadorAudio((arquivoAudio) => {
+    const optimisticMessage = {
+      id: `opt_${Date.now()}`,
+      id_chamado: chamado.id_chamado,
+      id_usuario: auth.user.id_usuario,
+      ds_mensagem: "",
+      ds_caminho_arquivo: "pending",
+      dt_envio: new Date().toISOString(),
+      usuario: auth.user,
+      dt_leitura: null,
+      isOptimistic: true
+    };
+    setCurrentChat(prev => [...prev, optimisticMessage]);
+    scrollToBottom("smooth");
+
+    router.post(route('chamados.chat', chamado.id_chamado), {
+      mensagem: "",
+      arquivo: arquivoAudio,
+    }, {
+      forceFormData: true,
+      preserveScroll: true,
+      onSuccess: () => {
+        markChatAsRead();
+        axios.get(`/api/chamados/${chamado.id_chamado}/chat`).then(res => {
+          setCurrentChat(res.data);
+          scrollToBottom("auto");
+        });
+      },
+    });
+  });
+
+  // Ouvir mensagens de texto em voz alta.
+  const leitorChat = useLeitor();
+  const [lendoMsgId, setLendoMsgId] = useState(null);
+  React.useEffect(() => {
+    if (!leitorChat.falando) setLendoMsgId(null);
+  }, [leitorChat.falando]);
+  const ouvirMensagem = (msg) => {
+    if (lendoMsgId === msg.id) {
+      leitorChat.parar();
+      return;
+    }
+    setLendoMsgId(msg.id);
+    leitorChat.ler(msg.ds_mensagem);
   };
 
   // Form de Edição Expandido
@@ -420,6 +472,7 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
 
   const isImage = (filename) => /\.(jpg|jpeg|png|gif|webp)$/i.test(filename);
   const isChatImage = (path) => path && /\.(jpg|jpeg|png|gif|webp)$/i.test(path);
+  const isChatAudio = (path) => path && /\.(mp3|wav|ogg|m4a|aac|weba|opus)$/i.test(path);
   const anexosImagens = chamado.anexos?.filter(a => isImage(a.name)) || [];
   const anexosDocumentos = chamado.anexos?.filter(a => !isImage(a.name)) || [];
 
@@ -1244,10 +1297,28 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
                                 ? "bg-indigo-600 text-white rounded-tr-none" 
                                 : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-700 rounded-tl-none"
                             )}>
-                              {msg.ds_mensagem && <p className="leading-relaxed font-medium">{msg.ds_mensagem}</p>}
-                              
+                              {msg.ds_mensagem && (
+                                <div className="flex items-start gap-2">
+                                  <p className="leading-relaxed font-medium flex-1">{msg.ds_mensagem}</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => ouvirMensagem(msg)}
+                                    title="Ouvir mensagem"
+                                    className={cn("shrink-0 p-1 rounded-full opacity-60 hover:opacity-100 transition-opacity", isMe ? "text-white" : "text-slate-500 dark:text-slate-400")}
+                                  >
+                                    {lendoMsgId === msg.id ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                                  </button>
+                                </div>
+                              )}
+
                               {msg.ds_caminho_arquivo && (
-                                isChatImage(msg.ds_caminho_arquivo) ? (
+                                isChatAudio(msg.ds_caminho_arquivo) ? (
+                                  <audio
+                                    controls
+                                    src={msg.ds_caminho_arquivo === "pending" ? undefined : `/storage/${msg.ds_caminho_arquivo}`}
+                                    className={cn("mt-2 w-full h-10", msg.ds_caminho_arquivo === "pending" && "opacity-50")}
+                                  />
+                                ) : isChatImage(msg.ds_caminho_arquivo) ? (
                                   <a 
                                     href={msg.ds_caminho_arquivo === "pending" ? "#" : `/storage/${msg.ds_caminho_arquivo}`} 
                                     target={msg.ds_caminho_arquivo === "pending" ? "_self" : "_blank"} 
@@ -1328,9 +1399,22 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
                           onChange={e => setChatData('mensagem', e.target.value)}
                           className="flex-1 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-2xl px-5 h-11 text-sm focus:ring-2 focus:ring-indigo-500/20 transition-all dark:text-slate-200 placeholder:font-medium"
                         />
-                        <Button 
-                          type="submit" 
-                          disabled={chatProcessing || (!chatData.mensagem && !chatData.arquivo)} 
+                        <button
+                          type="button"
+                          onClick={gravadorChat.alternar}
+                          title={gravadorChat.suportado ? "Gravar mensagem de voz" : "Gravação de áudio não suportada neste navegador"}
+                          className={cn(
+                            "w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 transition-all border active:scale-95",
+                            gravadorChat.gravando
+                              ? "bg-rose-500 hover:bg-rose-600 text-white border-rose-500 animate-pulse"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 hover:text-indigo-600 border-slate-200 dark:border-slate-700"
+                          )}
+                        >
+                          {gravadorChat.gravando ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                        </button>
+                        <Button
+                          type="submit"
+                          disabled={chatProcessing || (!chatData.mensagem && !chatData.arquivo)}
                           className="w-11 h-11 rounded-2xl p-0 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 shrink-0 active:scale-95"
                         >
                           {chatProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}

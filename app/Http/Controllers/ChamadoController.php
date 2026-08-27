@@ -23,8 +23,9 @@ use Inertia\Inertia;
 
 class ChamadoController extends Controller
 {
-    // Imagens comuns + PDF + Excel + PowerPoint. Sem tipos executáveis/scriptáveis.
-    private const MIMES_ANEXO = 'jpg,jpeg,png,gif,webp,bmp,pdf,xls,xlsx,csv,ppt,pptx';
+    // Imagens comuns + PDF + Excel + PowerPoint + áudio (mensagens de voz no
+    // chat do chamado). Sem tipos executáveis/scriptáveis.
+    private const MIMES_ANEXO = 'jpg,jpeg,png,gif,webp,bmp,pdf,xls,xlsx,csv,ppt,pptx,mp3,wav,ogg,m4a,aac,weba,opus';
 
     protected $chamadoService;
 

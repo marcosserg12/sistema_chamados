@@ -11,13 +11,18 @@ import {
     AtSign,
     Paperclip,
     FileIcon,
-    ExternalLink
+    ExternalLink,
+    Mic,
+    MicOff,
+    Volume2,
+    VolumeX
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/Components/ui/avatar";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useGravadorAudio, useLeitor } from "@/hooks/use-voz";
 
 export default function TechChat() {
     const { auth } = usePage().props;
@@ -193,6 +198,53 @@ export default function TechChat() {
         }
     };
 
+    // Mensagem de voz: grava e envia direto, sem passar pelo campo de texto.
+    const gravadorTech = useGravadorAudio(async (arquivoAudio) => {
+        const optimisticMessage = {
+            id: `opt_${Date.now()}`,
+            id_usuario: auth.user.id_usuario,
+            ds_mensagem: "",
+            ds_caminho_arquivo: "pending",
+            dt_envio: new Date().toISOString(),
+            usuario: auth.user,
+            isOptimistic: true
+        };
+        setMessages(prev => [...prev, optimisticMessage]);
+
+        const formData = new FormData();
+        formData.append('mensagem', "");
+        formData.append('arquivo', arquivoAudio);
+
+        try {
+            const response = await axios.post("/api/tech-chat", formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setMessages(prev => {
+                const filtered = prev.filter(m => m.id !== optimisticMessage.id);
+                if (filtered.some(m => m.id === response.data.message.id)) return filtered;
+                return [...filtered, response.data.message];
+            });
+        } catch (error) {
+            console.error("Erro ao enviar áudio:", error);
+            setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+        }
+    });
+
+    // Ouvir mensagens de texto em voz alta.
+    const leitorTech = useLeitor();
+    const [lendoMsgId, setLendoMsgId] = useState(null);
+    useEffect(() => {
+        if (!leitorTech.falando) setLendoMsgId(null);
+    }, [leitorTech.falando]);
+    const ouvirMensagem = (msg) => {
+        if (lendoMsgId === msg.id) {
+            leitorTech.parar();
+            return;
+        }
+        setLendoMsgId(msg.id);
+        leitorTech.ler(msg.ds_mensagem);
+    };
+
     const isImage = (path) => path && /\.(jpg|jpeg|png|gif|webp|bmp|svg|heic|ico)$/i.test(path);
     const isAudio = (path) => path && /\.(mp3|wav|ogg|m4a|aac|weba|opus)$/i.test(path);
 
@@ -217,7 +269,19 @@ export default function TechChat() {
 
         return (
             <div className="space-y-3">
-                {text && <div className="break-words">{content}</div>}
+                {text && (
+                    <div className="flex items-start gap-2">
+                        <div className="break-words flex-1">{content}</div>
+                        <button
+                            type="button"
+                            onClick={() => ouvirMensagem(msg)}
+                            title="Ouvir mensagem"
+                            className="shrink-0 p-1 rounded-full text-slate-500 hover:text-indigo-400 opacity-60 hover:opacity-100 transition-opacity"
+                        >
+                            {lendoMsgId === msg.id ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                        </button>
+                    </div>
+                )}
                 {fileUrl && (
                     isImage(msg.ds_caminho_arquivo) || msg.ds_caminho_arquivo === "pending" ? (
                         <a href={fileUrl} target={msg.ds_caminho_arquivo === "pending" ? "_self" : "_blank"} rel="noreferrer" className={cn("block rounded-lg overflow-hidden border border-white/10 hover:opacity-80 transition-opacity", msg.ds_caminho_arquivo === "pending" && "opacity-50 blur-[2px]")}>
@@ -382,6 +446,19 @@ export default function TechChat() {
                                             title="Anexar arquivo"
                                         >
                                             <Paperclip className="w-5 h-5" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={gravadorTech.alternar}
+                                            title={gravadorTech.suportado ? "Gravar mensagem de voz" : "Gravação de áudio não suportada neste navegador"}
+                                            className={cn(
+                                                "w-10 h-10 shrink-0 border rounded-xl flex items-center justify-center transition-all active:scale-95",
+                                                gravadorTech.gravando
+                                                    ? "bg-rose-500 border-rose-500 text-white animate-pulse"
+                                                    : "bg-slate-900 border-white/10 text-slate-500 hover:text-indigo-400"
+                                            )}
+                                        >
+                                            {gravadorTech.gravando ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                                         </button>
                                         <div className="relative flex-1">
                                             <input

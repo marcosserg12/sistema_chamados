@@ -19,52 +19,7 @@ import {
 import { toast } from "sonner";
 import axios from "axios";
 import { cn } from "@/lib/utils";
-
-// Ditado por voz (Web Speech API) — usado tanto no chat da IA quanto na
-// Descrição Completa. Só funciona em navegadores baseados em Chromium
-// (Chrome/Edge); em outros, o botão avisa que não é suportado.
-function useDitado(aoReconhecer) {
-  const recognitionRef = React.useRef(null);
-  const [gravando, setGravando] = useState(false);
-  const SpeechRecognitionCtor = typeof window !== "undefined"
-    ? (window.SpeechRecognition || window.webkitSpeechRecognition)
-    : null;
-
-  const alternar = () => {
-    if (!SpeechRecognitionCtor) {
-      toast.error("Ditado por voz não é suportado neste navegador. Tente o Chrome ou o Edge.");
-      return;
-    }
-
-    if (gravando) {
-      recognitionRef.current?.stop();
-      return;
-    }
-
-    const recognition = new SpeechRecognitionCtor();
-    recognition.lang = "pt-BR";
-    recognition.continuous = true;
-    recognition.interimResults = false;
-
-    recognition.onresult = (event) => {
-      let textoFinal = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          textoFinal += event.results[i][0].transcript;
-        }
-      }
-      if (textoFinal.trim()) aoReconhecer(textoFinal.trim());
-    };
-    recognition.onerror = () => setGravando(false);
-    recognition.onend = () => setGravando(false);
-
-    recognitionRef.current = recognition;
-    recognition.start();
-    setGravando(true);
-  };
-
-  return { suportado: !!SpeechRecognitionCtor, gravando, alternar };
-}
+import { useDitado } from "@/hooks/use-voz";
 
 export default function NovoChamado({ empresas = [], tiposChamado = [] }) {
   const { auth } = usePage().props;
