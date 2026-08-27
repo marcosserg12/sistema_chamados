@@ -54,6 +54,7 @@ import {
 } from "@/Components/ui/dialog";
 import { cn } from "@/lib/utils";
 import TechChat from "@/Components/TechChat";
+import NovidadesModal from "@/Components/NovidadesModal";
 import { Toaster } from "@/Components/ui/sonner";
 
 // Flag global para persistir o estado de desbloqueio de áudio entre navegações SPA (Inertia)
@@ -929,6 +930,7 @@ export default function Layout({ children }) {
         {children}
       </LayoutContent>
       <Toaster richColors closeButton />
+      <NovidadesModal />
     </ThemeProvider>
   );
 }
