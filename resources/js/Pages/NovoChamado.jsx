@@ -538,7 +538,7 @@ Motivo da alteração: `;
                 <div>
                   <h3 className="font-black text-slate-800 dark:text-slate-100">Abrir chamado com IA</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Descreva o problema com suas palavras. Se faltar algum detalhe, a IA pergunta antes de preencher o chamado — você confere tudo antes de enviar. (Recurso experimental)
+                    Descreva o problema com suas palavras — diga qual sistema (ex: Sisibranutro, Gerencial) e o local, se souber. Se faltar algum detalhe, a IA pergunta antes de preencher o chamado — você confere tudo antes de enviar. (Recurso experimental)
                   </p>
                 </div>
               </div>
