@@ -109,6 +109,10 @@ class AiChamadoService
         $corpo = [
             'model' => self::MODELO,
             'messages' => $messages,
+            // Baixa temperatura: isso é classificação, não texto criativo —
+            // quanto mais determinístico, menos chance de "escorregar" pra
+            // uma opção genérica quando a pessoa já disse qual sistema é.
+            'temperature' => 0.2,
             'response_format' => [
                 'type' => 'json_schema',
                 'json_schema' => [
@@ -278,6 +282,7 @@ class AiChamadoService
         $linhas[] = '- Se fizer sentido pro tipo de problema e a pessoa não tiver dito onde/em qual local (setor, unidade) isso está acontecendo, pode perguntar também — mas isso é opcional, não trave a classificação só por causa disso.';
         $linhas[] = '- Depois que a pessoa responder sua pergunta, avalie de novo: se já deu pra entender o suficiente, classifique; se ainda estiver vago, pode perguntar mais uma vez (no máximo 2-3 perguntas no total — depois disso, classifique com o que tiver, usando a opção mais genérica/provável).';
         $linhas[] = '- Nunca repita uma pergunta que a pessoa já respondeu, e nunca peça informação que ela já deu em uma mensagem anterior.';
+        $linhas[] = '- Se a pessoa já respondeu qual sistema é (ex: "Sisibranutro"), USE exatamente essa resposta pra escolher o detalhe correspondente na árvore — nunca ignore isso e volte pra uma opção genérica como "Problemas com Windows/Microsoft".';
         $linhas[] = '- O schema de resposta exige todos os campos preenchidos mesmo quando tipo_resposta="pergunta" — nesse caso, siga exatamente o valor de preenchimento indicado na descrição de cada campo (eles são ignorados).';
         $linhas[] = '';
         $linhas[] = 'Regras da classificação final (tipo_resposta="classificacao"):';
