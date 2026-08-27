@@ -51,9 +51,7 @@ import {
   CheckCheck,
   File as FileIcon,
   Mic,
-  MicOff,
-  Volume2,
-  VolumeX
+  MicOff
 } from "lucide-react";
 import { format, formatDistanceToNow, isPast } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -63,7 +61,7 @@ import axios from "axios";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { STATUS, STATUS_LIST, STATUS_SECUNDARIOS, getStatusLabel } from "@/lib/statusChamado";
-import { useGravadorAudio, useLeitor } from "@/hooks/use-voz";
+import { useGravadorAudio } from "@/hooks/use-voz";
 
 export default function ChamadoDetalhes({ chamado, historico = [], chat = [], tecnicos = [], empresas = [], tiposChamado = [] }) {
   const [comentario, setComentario] = useState("");
@@ -235,21 +233,6 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
       },
     });
   });
-
-  // Ouvir mensagens de texto em voz alta.
-  const leitorChat = useLeitor();
-  const [lendoMsgId, setLendoMsgId] = useState(null);
-  React.useEffect(() => {
-    if (!leitorChat.falando) setLendoMsgId(null);
-  }, [leitorChat.falando]);
-  const ouvirMensagem = (msg) => {
-    if (lendoMsgId === msg.id) {
-      leitorChat.parar();
-      return;
-    }
-    setLendoMsgId(msg.id);
-    leitorChat.ler(msg.ds_mensagem);
-  };
 
   // Form de Edição Expandido
   const { data: editData, setData: setEditData, post: postEdit, transform: transformEdit, processing: editProcessing, errors: editErrors, reset: resetEdit } = useForm({
@@ -1297,19 +1280,7 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
                                 ? "bg-indigo-600 text-white rounded-tr-none" 
                                 : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-700 rounded-tl-none"
                             )}>
-                              {msg.ds_mensagem && (
-                                <div className="flex items-start gap-2">
-                                  <p className="leading-relaxed font-medium flex-1">{msg.ds_mensagem}</p>
-                                  <button
-                                    type="button"
-                                    onClick={() => ouvirMensagem(msg)}
-                                    title="Ouvir mensagem"
-                                    className={cn("shrink-0 p-1 rounded-full opacity-60 hover:opacity-100 transition-opacity", isMe ? "text-white" : "text-slate-500 dark:text-slate-400")}
-                                  >
-                                    {lendoMsgId === msg.id ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                                  </button>
-                                </div>
-                              )}
+                              {msg.ds_mensagem && <p className="leading-relaxed font-medium">{msg.ds_mensagem}</p>}
 
                               {msg.ds_caminho_arquivo && (
                                 isChatAudio(msg.ds_caminho_arquivo) ? (

@@ -13,16 +13,14 @@ import {
     FileIcon,
     ExternalLink,
     Mic,
-    MicOff,
-    Volume2,
-    VolumeX
+    MicOff
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/Components/ui/avatar";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useGravadorAudio, useLeitor } from "@/hooks/use-voz";
+import { useGravadorAudio } from "@/hooks/use-voz";
 
 export default function TechChat() {
     const { auth } = usePage().props;
@@ -230,21 +228,6 @@ export default function TechChat() {
         }
     });
 
-    // Ouvir mensagens de texto em voz alta.
-    const leitorTech = useLeitor();
-    const [lendoMsgId, setLendoMsgId] = useState(null);
-    useEffect(() => {
-        if (!leitorTech.falando) setLendoMsgId(null);
-    }, [leitorTech.falando]);
-    const ouvirMensagem = (msg) => {
-        if (lendoMsgId === msg.id) {
-            leitorTech.parar();
-            return;
-        }
-        setLendoMsgId(msg.id);
-        leitorTech.ler(msg.ds_mensagem);
-    };
-
     const isImage = (path) => path && /\.(jpg|jpeg|png|gif|webp|bmp|svg|heic|ico)$/i.test(path);
     const isAudio = (path) => path && /\.(mp3|wav|ogg|m4a|aac|weba|opus)$/i.test(path);
 
@@ -269,19 +252,7 @@ export default function TechChat() {
 
         return (
             <div className="space-y-3">
-                {text && (
-                    <div className="flex items-start gap-2">
-                        <div className="break-words flex-1">{content}</div>
-                        <button
-                            type="button"
-                            onClick={() => ouvirMensagem(msg)}
-                            title="Ouvir mensagem"
-                            className="shrink-0 p-1 rounded-full text-slate-500 hover:text-indigo-400 opacity-60 hover:opacity-100 transition-opacity"
-                        >
-                            {lendoMsgId === msg.id ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                        </button>
-                    </div>
-                )}
+                {text && <div className="break-words">{content}</div>}
                 {fileUrl && (
                     isImage(msg.ds_caminho_arquivo) || msg.ds_caminho_arquivo === "pending" ? (
                         <a href={fileUrl} target={msg.ds_caminho_arquivo === "pending" ? "_self" : "_blank"} rel="noreferrer" className={cn("block rounded-lg overflow-hidden border border-white/10 hover:opacity-80 transition-opacity", msg.ds_caminho_arquivo === "pending" && "opacity-50 blur-[2px]")}>
