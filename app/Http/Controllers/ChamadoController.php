@@ -25,7 +25,7 @@ class ChamadoController extends Controller
 {
     // Imagens comuns + PDF + Excel + PowerPoint + áudio (mensagens de voz no
     // chat do chamado). Sem tipos executáveis/scriptáveis.
-    private const MIMES_ANEXO = 'jpg,jpeg,png,gif,webp,bmp,pdf,xls,xlsx,csv,ppt,pptx,mp3,wav,ogg,m4a,aac,weba,opus';
+    private const MIMES_ANEXO = 'jpg,jpeg,png,gif,webp,bmp,pdf,doc,docx,xls,xlsx,csv,ppt,pptx,txt,rtf,mp3,wav,ogg,m4a,aac,weba,opus';
 
     protected $chamadoService;
 
@@ -142,7 +142,7 @@ class ChamadoController extends Controller
             'st_grau' => 'nullable',
             'ds_patrimonio' => 'nullable|string',
             'arquivos' => 'nullable|array',
-            'arquivos.*' => 'file|max:10240|mimes:' . self::MIMES_ANEXO,
+            'arquivos.*' => 'file|max:51200|mimes:' . self::MIMES_ANEXO, // 50MB
         ]);
 
         $chamado = $this->chamadoService->criarChamado(
@@ -274,7 +274,7 @@ class ChamadoController extends Controller
         if ($request->has('ds_titulo')) {
             if ($request->hasFile('arquivos')) {
                 $request->validate([
-                    'arquivos.*' => 'file|max:10240|mimes:' . self::MIMES_ANEXO,
+                    'arquivos.*' => 'file|max:51200|mimes:' . self::MIMES_ANEXO, // 50MB
                 ]);
             }
 
