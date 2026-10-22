@@ -37,3 +37,6 @@ Thumbs.db
 !/storage/framework/views/.gitignore
 /storage/app/public/uploads/*
 !/storage/app/public/uploads/.gitignore
+
+# Ferramentas de agentes
+.claude-flow/

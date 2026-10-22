@@ -439,13 +439,6 @@ CREATE TABLE `users` (
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (3,'0001_01_01_000002_create_jobs_table',1);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (4,'2026_02_13_164726_add_preferencias_to_users_table',2);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (5,'2026_02_23_111851_create_notifications_table',2);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (6,'2026_02_23_134105_add_ds_foto_to_users_table',3);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (7,'2026_02_23_172740_create_tb_chat_chamado_table',4);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (8,'2026_02_24_165454_add_dt_leitura_to_tb_chat_chamado_table',5);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (9,'2026_02_24_201413_create_tb_chat_tecnico_table',6);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (1,'0001_01_01_000000_create_users_table',1);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (2,'0001_01_01_000001_create_cache_table',1);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (3,'0001_01_01_000002_create_jobs_table',1);
