@@ -36,8 +36,8 @@ return [
     ],
 
     'evolution' => [
-        'base_url' => env('EVOLUTION_BASE_URL', 'https://evolution.sisibranutro.com.br'),
-        'api_key' => env('EVOLUTION_API_KEY', 'A29A1968FDA8-483E-9F7D-DE4451B90D6F'),
+        'base_url' => env('EVOLUTION_BASE_URL'),
+        'api_key' => env('EVOLUTION_API_KEY'),
         'instance' => env('EVOLUTION_INSTANCE', 'suporte'),
     ],
 
