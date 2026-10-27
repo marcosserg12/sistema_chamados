@@ -16,6 +16,7 @@ use App\Http\Controllers\ChamadoChecklistController;
 use App\Http\Controllers\KanbanController;
 use App\Http\Controllers\KanbanObservacaoController;
 use App\Http\Controllers\AlterarSenhaController;
+use App\Http\Controllers\EscritorioController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -76,6 +77,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/relatorios', [App\Http\Controllers\RelatorioSemanalController::class, 'index'])->name('relatorios.index');
     Route::get('/relatorios/exportar', [App\Http\Controllers\RelatorioSemanalController::class, 'export'])->name('relatorios.export');
+
+    Route::get('/escritorio', [EscritorioController::class, 'index'])->name('escritorio.index');
+    Route::get('/api/escritorio', [EscritorioController::class, 'dados'])->name('api.escritorio');
+    Route::put('/api/escritorio/aparencia/{id}', [EscritorioController::class, 'salvarAparencia'])->name('api.escritorio.aparencia');
 
     Route::get('/board', [KanbanController::class, 'index'])->name('kanban.index');
     Route::put('/api/kanban/move', [KanbanController::class, 'move'])->name('api.kanban.move');

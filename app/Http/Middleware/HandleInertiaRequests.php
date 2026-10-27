@@ -41,6 +41,7 @@ class HandleInertiaRequests extends Middleware
                     'nu_telefone' => $request->user()->nu_telefone,
                     'ds_foto' => $request->user()->ds_foto,
                     'preferencias' => $request->user()->preferencias,
+                    've_escritorio' => \App\Http\Controllers\EscritorioController::podeVer($request->user()),
                 ] : null,
             ],
             // 👇 ADICIONE ESTE BLOCO FLASH AQUI 👇

@@ -53,6 +53,18 @@ O perfil **Gestor** vê os chamados das localizações que gerencia.
 - Empresas são gerenciadas pelo Super Admin. O Administrador só vê as empresas a que está vinculado.
 - Busca global por chamados (respeitando a visibilidade do perfil), patrimônios e usuários.
 
+### Escritório 3D (`/escritorio`)
+Visão em Three.js da equipe técnica, só para os técnicos e o coordenador. Atualiza sozinha a cada 30 s.
+- Cada técnico tem uma baia; quem senta com quem fica em `fileiras` no config; quem está em `infra` no config (hoje o Jeliel) fica na área de Infraestrutura, ao lado dos racks. Os papéis na mesa são a fila dele (cor = status), o monitor mostra o chamado em andamento, a luz vermelha acende quando há chamado Aberto ou Em Andamento há mais de 48 h (Aguardando Teste e Pausado não contam como atraso) e o troféu vai para quem mais resolveu nos últimos 7 dias.
+- O rodapé passa as últimas movimentações uma a uma (pausa com o mouse em cima). O painel "Movimento recente", minimizado no canto, abre com tudo que mudou de status nos últimos 7 dias, os últimos fechados e os últimos que alguém pegou para fazer; o que mudou na última hora fica destacado.
+- Clicar na baia abre a fila, os últimos chamados colocados em andamento (30 dias) e os últimos fechados, com links para cada chamado.
+- O coordenador (Renato Lima, `config('escritorio.chefe')`) fica na sala de vidro; clicar nele, no painel da parede ou na mesa de triagem abre a visão da equipe: carga de cada um, atrasados, fila sem responsável e ranking. De tempos em tempos ele sai da sala e passa nas baias em rodízio, por todos da equipe.
+- Mais ou menos a cada 10 minutos (a primeira 2 min depois de abrir a tela) alguém levanta e vai à copa pegar café, beber água ou sentar um pouco no sofá, e depois volta para a baia.
+- Mensagens do chat da equipe viram balões em cima de quem falou; resolver um chamado solta confete na baia e um aviso na tela.
+- Modo TV (`/escritorio?tv`): gira na visão geral e passa por cada pessoa.
+- Os bonecos foram montados a partir das fotos de perfil, em `config/escritorio.php`. O coordenador ajusta pela tela (botão "Aparência"); o ajuste fica em `storage/app/escritorio/aparencias.json`.
+- Quem aparece, o chefe, o limite de atraso e o intervalo de atualização também ficam em `config/escritorio.php`.
+
 ## Stack
 
 **Backend:** PHP 8.2+, Laravel 12, Inertia.js 2, Laravel Reverb (WebSockets), Laravel Breeze (base da autenticação), barryvdh/laravel-dompdf, Ziggy, MySQL e fila em banco de dados.

@@ -32,7 +32,8 @@ import {
   Trash2,
   HelpCircle,
   Info,
-  Kanban
+  Kanban,
+  Armchair
 } from "lucide-react";
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
@@ -61,7 +62,7 @@ import { Toaster } from "@/Components/ui/sonner";
 let isAudioUnlockedGlobal = false;
 
 // 2. FUNÇÃO QUE GERA OS MENUS DE ACORDO COM O PERFIL
-const getNavigationGroups = (perfilId) => {
+const getNavigationGroups = (perfilId, veEscritorio) => {
   // O Perfil 5 (Super Admin) tem acesso a tudo.
   const isSuperAdmin = perfilId === 5;
   const isAdmin = perfilId === 1;
@@ -95,6 +96,7 @@ const getNavigationGroups = (perfilId) => {
     {
       title: "Dashboards",
       items: [
+        { name: "Escritório", href: "/escritorio", icon: Armchair, show: !!veEscritorio }, // técnicos e o coordenador
         { name: "Visão Admin", href: "/dashboard/admin", icon: Shield, show: isAdmin || isSuperAdmin },
         { name: "Visão Técnico", href: "/dashboard/tecnico", icon: Wrench, show: isTecnico || isSuperAdmin },
         { name: "Relatório Semanal", href: "/relatorios", icon: FileText, show: isAdmin || isTecnico || isSuperAdmin },
@@ -361,7 +363,7 @@ function LayoutContent({ children }) {
   const mainPadding = menuCompacto ? "lg:pl-[72px]" : "lg:pl-64";
 
   // 4. FILTRA OS MENUS ANTES DE RENDERIZAR
-  const filteredNavigation = getNavigationGroups(perfilId)
+  const filteredNavigation = getNavigationGroups(perfilId, user?.ve_escritorio)
     .map(group => ({
       ...group,
       items: group.items.filter(item => item.show) // Mantém apenas os permitidos
