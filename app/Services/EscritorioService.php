@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Usuario;
+use App\Support\PrazoChamado;
 use App\Support\StatusChamado;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -21,6 +22,8 @@ class EscritorioService
 {
     // Só conta atraso o que depende da equipe: Aguardando Teste e Pausado estão parados por
     // motivo de fora (usuário testando, peça), então não acendem alerta.
+    //   - Em Andamento: atrasado quando o prazo de entrega venceu (PrazoChamado);
+    //   - Aberto (ninguém assumiu, ainda sem prazo): atrasado depois de horas_atraso.
     const STATUS_QUE_ATRASAM = [StatusChamado::ABERTO, StatusChamado::EM_ANDAMENTO];
 
     const ARQUIVO_APARENCIAS = 'escritorio/aparencias.json';
@@ -59,7 +62,7 @@ class EscritorioService
             $doMes = $fechados->filter(fn ($c) => $c['resolvido_em_ts'] >= $trintaDias->timestamp);
 
             $emAndamento = $fila->where('status', StatusChamado::EM_ANDAMENTO)->sortByDesc('atualizado_em_ts')->first();
-            $atrasados = $fila->filter(fn ($c) => in_array($c['status'], self::STATUS_QUE_ATRASAM) && $c['aberto_em_ts'] < $limiteAtraso->timestamp)->count();
+            $atrasados = $fila->where('atrasado', true)->count();
             $ultima = $ultimaAtividade[$id] ?? null;
 
             return [
@@ -185,7 +188,7 @@ class EscritorioService
             ->leftJoin('tb_usuario_laravel as s', 'c.id_usuario', '=', 's.id_usuario')
             ->select(
                 'c.id_chamado', 'c.ds_titulo', 'c.st_status', 'c.st_grau', 'c.dt_data_chamado',
-                'c.dt_update', 'c.dt_previsao_termino',
+                'c.dt_update', 'c.dt_prazo',
                 'e.ds_empresa', 'l.ds_localizacao', 's.ds_nome as ds_solicitante'
             );
     }
@@ -209,8 +212,43 @@ class EscritorioService
             'aberto_em_ts' => $aberto->timestamp,
             'atualizado_em' => $atualizado->toIso8601String(),
             'atualizado_em_ts' => $atualizado->timestamp,
-            'previsao' => $c->dt_previsao_termino ? Carbon::parse($c->dt_previsao_termino)->toIso8601String() : null,
+            'prazo' => $c->dt_prazo ? substr((string) $c->dt_prazo, 0, 10) : null,
+            'prazo_situacao' => PrazoChamado::situacao($c->dt_prazo, (int) $c->st_status),
+            'atrasado' => $this->estaAtrasado((int) $c->st_status, $aberto, $c->dt_prazo),
         ], $extra);
+    }
+
+    /**
+     * Regra da luz vermelha: Em Andamento com prazo vencido, ou Aberto que
+     * ninguém assumiu há mais de horas_atraso.
+     */
+    private function estaAtrasado(int $status, Carbon $abertoEm, $prazo): bool
+    {
+        if ($status === StatusChamado::EM_ANDAMENTO) {
+            return PrazoChamado::situacao($prazo, $status) === PrazoChamado::ATRASADO;
+        }
+
+        if ($status === StatusChamado::ABERTO) {
+            return $abertoEm->lt(Carbon::now()->subHours((int) config('escritorio.horas_atraso', 48)));
+        }
+
+        return false;
+    }
+
+    /**
+     * Mesma regra de estaAtrasado(), em SQL.
+     */
+    private function ondeAtrasado($query, Carbon $limiteAtraso, string $alias = 'c'): void
+    {
+        $query->where(function ($q) use ($limiteAtraso, $alias) {
+            $q->where(function ($a) use ($limiteAtraso, $alias) {
+                $a->where("{$alias}.st_status", StatusChamado::ABERTO)
+                    ->where("{$alias}.dt_data_chamado", '<', $limiteAtraso);
+            })->orWhere(function ($b) use ($alias) {
+                $b->where("{$alias}.st_status", StatusChamado::EM_ANDAMENTO)
+                    ->where("{$alias}.dt_prazo", '<', Carbon::today()->toDateString());
+            });
+        });
     }
 
     private function semTimestamps(array $c): array
@@ -329,10 +367,7 @@ class EscritorioService
             'em_andamento' => (int) ($porStatus[StatusChamado::EM_ANDAMENTO] ?? 0),
             'aguardando_teste' => (int) ($porStatus[StatusChamado::AGUARDANDO_TESTE] ?? 0),
             'pausados' => (int) ($porStatus[StatusChamado::PAUSADO] ?? 0),
-            'atrasados' => DB::table('tb_chamados')
-                ->whereIn('st_status', self::STATUS_QUE_ATRASAM)
-                ->where('dt_data_chamado', '<', $limiteAtraso)
-                ->count(),
+            'atrasados' => tap(DB::table('tb_chamados as c'), fn ($q) => $this->ondeAtrasado($q, $limiteAtraso))->count(),
             'abertos_hoje' => DB::table('tb_chamados')->where('dt_data_chamado', '>=', $agora->copy()->startOfDay())->count(),
             'resolvidos_hoje' => $resolvidosHoje,
         ];
@@ -359,9 +394,8 @@ class EscritorioService
             ->leftJoin('rl_chamado_usuario as rl', 'c.id_chamado', '=', 'rl.id_chamado')
             ->leftJoin('tb_usuario_laravel as t', 'rl.id_usuario', '=', 't.id_usuario')
             ->addSelect('t.id_usuario as id_tecnico', 't.ds_nome as ds_tecnico')
-            ->whereIn('c.st_status', self::STATUS_QUE_ATRASAM)
-            ->where('c.dt_data_chamado', '<', $limiteAtraso)
-            ->orderBy('c.dt_data_chamado')
+            ->tap(fn ($q) => $this->ondeAtrasado($q, $limiteAtraso))
+            ->orderByRaw('COALESCE(c.dt_prazo, DATE(c.dt_data_chamado))')
             ->limit(30)
             ->get()
             ->map(fn ($c) => $this->semTimestamps($this->formatarChamado($c, [

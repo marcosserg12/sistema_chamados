@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStatusDotClass } from "@/lib/statusChamado";
+import PrazoBadge from "@/Components/chamados/PrazoBadge";
+import { formatPrazo } from "@/lib/prazoChamado";
 
 export default function DashboardAdmin({
   kpis, dailyTrend, porStatus, localizacoesTop,
@@ -63,7 +65,7 @@ export default function DashboardAdmin({
           <KpiItem title="Abertos" value={kpis.abertos} icon={Ticket} color="blue" />
           <KpiItem title="Em Curso" value={kpis.emAndamento} icon={Clock} color="amber" />
           <KpiItem title="Resolvidos" value={kpis.resolvidos} icon={CheckCircle} color="emerald" />
-          <KpiItem title="Críticos (+48h)" value={kpis.atrasados} icon={AlertTriangle} color="rose" />
+          <KpiItem title="Atrasados" value={kpis.atrasados} icon={AlertTriangle} color="rose" />
         </div>
 
         {/* GRÁFICOS: TENDÊNCIA E STATUS */}
@@ -204,7 +206,7 @@ export default function DashboardAdmin({
           <Card className="border-rose-200 bg-rose-50/50 dark:bg-rose-950/10 dark:border-rose-900/50 shadow-sm">
             <CardHeader>
               <CardTitle className="text-base text-rose-700 dark:text-rose-400 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" /> Críticos (+48h)
+                <AlertTriangle className="w-4 h-4" /> Atrasados (prazo vencido)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -225,10 +227,13 @@ export default function DashboardAdmin({
                         <span className="text-[10px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-900/30 dark:text-rose-300 px-1.5 py-0.5 rounded">Atrasado</span>
                       </div>
                       <div className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate" title={alerta.titulo}>{alerta.titulo}</div>
-                      <div className="flex justify-between items-center mt-2 text-[10px]">
-                          <span className="text-slate-500 dark:text-slate-500 truncate max-w-[100px]">{alerta.empresa}</span>
-                          {/* Nova formatação de tempo */}
-                          <span className="text-rose-600 dark:text-rose-400 font-bold">{alerta.tempo_atraso}</span>
+                      <div className="flex justify-between items-center gap-2 mt-2 text-[10px]">
+                          <span className="text-slate-500 dark:text-slate-500 truncate max-w-[120px]" title={alerta.tecnico || "Sem responsável"}>
+                            {alerta.tecnico || "Sem responsável"}
+                          </span>
+                          <span className="text-rose-600 dark:text-rose-400 font-bold whitespace-nowrap" title={`Prazo: ${formatPrazo(alerta.dt_prazo)}`}>
+                            {alerta.tempo_atraso}
+                          </span>
                       </div>
                     </Link>
                   ))
@@ -278,12 +283,13 @@ export default function DashboardAdmin({
                             <th className="px-6 py-3 font-semibold">Empresa</th>
                             <th className="px-6 py-3 font-semibold">Técnico</th>
                             <th className="px-6 py-3 font-semibold">Status</th>
+                            <th className="px-6 py-3 font-semibold">Prazo</th>
                             <th className="px-6 py-3 font-semibold">Tempo Aberto</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                         {tabelaChamados.data.length === 0 ? (
-                            <tr><td colSpan="6" className="text-center py-8 text-slate-400">Nenhum chamado pendente no momento.</td></tr>
+                            <tr><td colSpan="7" className="text-center py-8 text-slate-400">Nenhum chamado pendente no momento.</td></tr>
                         ) : (
                             tabelaChamados.data.map((chamado) => (
                                 <tr
@@ -325,6 +331,9 @@ export default function DashboardAdmin({
                                             <span className={cn("w-2 h-2 rounded-full shadow-sm", getStatusDotClass(chamado.st_code))}></span>
                                             <span className="text-slate-700 dark:text-slate-300 font-medium text-xs">{chamado.status}</span>
                                         </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <PrazoBadge prazo={chamado.dt_prazo} status={chamado.st_code} />
                                     </td>
                                     <td className="px-6 py-4">
                                         {/* Nova formatação de tempo aqui */}

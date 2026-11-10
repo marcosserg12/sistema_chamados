@@ -43,6 +43,7 @@ class NovoChat extends Notification implements ShouldQueue, ShouldBroadcast
             ->line('Você recebeu uma nova mensagem privada no chat do chamado #' . $this->chamado->id_chamado)
             ->line('**De:** ' . $this->usuarioRemetente->ds_nome)
             ->line('**Mensagem:** ' . $texto)
+            ->line('**Prazo de entrega:** ' . \App\Support\PrazoChamado::texto($this->chamado->dt_prazo, (int) $this->chamado->st_status))
             ->action('Responder agora', config('app.url') . "/chamados/{$this->chamado->id_chamado}")
             ->line('Obrigado!');
     }
@@ -54,6 +55,7 @@ class NovoChat extends Notification implements ShouldQueue, ShouldBroadcast
             'id_chamado' => $this->chamado->id_chamado,
             'title' => 'Nova Mensagem no Chat do chamado - ' . $this->chamado->id_chamado,
             'message' => "{$this->usuarioRemetente->ds_nome}{$texto}",
+            'prazo' => \App\Support\PrazoChamado::texto($this->chamado->dt_prazo, (int) $this->chamado->st_status),
             'url' => "/chamados/{$this->chamado->id_chamado}"
         ];
     }

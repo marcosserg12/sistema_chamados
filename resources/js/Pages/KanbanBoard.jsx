@@ -6,10 +6,14 @@ import axios from "axios";
 import { cn } from "@/lib/utils";
 import {
     Ticket, Clock, MessageSquare, ArrowRight,
-    CheckSquare, Plus, Trash2, Calendar, AlignLeft, ListTodo
+    CheckSquare, Plus, Trash2, Calendar, AlignLeft, ListTodo, CalendarClock
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/Components/ui/avatar";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
+import PrazoBadge from "@/Components/chamados/PrazoBadge";
+import PrazoDialog from "@/Components/chamados/PrazoDialog";
+import { PRAZO, STATUS_COM_PRAZO, formatPrazo, getPrazoSituacao } from "@/lib/prazoChamado";
 import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent } from "@/Components/ui/dialog";
 import { Input } from "@/Components/ui/input";
@@ -26,6 +30,9 @@ const KanbanBoard = ({ initialColumns, auth }) => {
     const [chamadoData, setChamadoData] = useState(null);
     const [newComment, setNewComment] = useState("");
     const [newChecklistItem, setNewChecklistItem] = useState("");
+    const [prazoDialogOpen, setPrazoDialogOpen] = useState(false);
+    const [prazoProcessando, setPrazoProcessando] = useState(false);
+    const [prazoErro, setPrazoErro] = useState(null);
 
     // Obter iniciais
     const getInitials = (name) => {
@@ -107,16 +114,30 @@ const KanbanBoard = ({ initialColumns, auth }) => {
         }
     };
 
-    const handleUpdatePrevisao = async (e) => {
-        const date = e.target.value;
+    // Definir/alterar prazo de entrega (alterar exige justificativa — regra no backend).
+    const handleSalvarPrazo = async ({ dt_prazo, ds_justificativa }) => {
+        setPrazoProcessando(true);
+        setPrazoErro(null);
         try {
-            await axios.post(`/api/kanban/chamado/${selectedChamadoId}/previsao`, { dt_previsao_termino: date });
-            setChamadoData(prev => ({
-                ...prev,
-                chamado: { ...prev.chamado, dt_previsao_termino: date }
-            }));
+            const { data } = await axios.post(
+                `/chamados/${selectedChamadoId}/prazo`,
+                { dt_prazo, ds_justificativa },
+                { headers: { Accept: "application/json" } }
+            );
+            const novo = data.dt_prazo ?? dt_prazo;
+            setChamadoData(prev => ({ ...prev, chamado: { ...prev.chamado, dt_prazo: novo } }));
+            setColumns(prev => Object.fromEntries(Object.entries(prev).map(([k, col]) => [k, {
+                ...col,
+                cards: col.cards.map(c => c.id_chamado === selectedChamadoId ? { ...c, dt_prazo: novo } : c),
+            }])));
+            setPrazoDialogOpen(false);
+            toast.success(`Prazo de entrega: ${formatPrazo(novo)}.`);
         } catch (error) {
-            console.error("Erro ao atualizar previsão", error);
+            const resposta = error.response?.data;
+            const msg = resposta?.errors ? Object.values(resposta.errors).flat()[0] : resposta?.message;
+            setPrazoErro(msg || "Não foi possível salvar o prazo.");
+        } finally {
+            setPrazoProcessando(false);
         }
     };
 
@@ -161,13 +182,15 @@ const KanbanBoard = ({ initialColumns, auth }) => {
 
                                 <div className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden p-1 bg-slate-100/50 dark:bg-slate-800/30 rounded-lg custom-scrollbar relative min-h-0">
                                     {column.cards.map((card) => {
+                                        const atrasado = getPrazoSituacao(card.dt_prazo, card.st_status) === PRAZO.ATRASADO;
                                         return (
                                             <div
                                                 key={card.id_chamado}
                                                 onClick={() => openModal(card.id_chamado)}
                                                 className={cn(
                                                     "mb-1.5 bg-white dark:bg-[#151c2c] p-2.5 rounded-lg border border-slate-200 dark:border-slate-700/50 hover:border-blue-400 dark:hover:border-blue-500 shadow-sm cursor-pointer select-none group transition-all",
-                                                    (column.id === '1' && card.id_tecnico === auth.user.id_usuario) ? "ring-2 ring-blue-500/50 border-blue-400 dark:border-blue-500 bg-blue-50/10 dark:bg-blue-500/10" : ""
+                                                    (column.id === '1' && card.id_tecnico === auth.user.id_usuario) ? "ring-2 ring-blue-500/50 border-blue-400 dark:border-blue-500 bg-blue-50/10 dark:bg-blue-500/10" : "",
+                                                    atrasado && "border-l-4 border-l-rose-500 dark:border-l-rose-500"
                                                 )}
                                             >
                                                 <div className="flex justify-between items-start mb-1 gap-2">
@@ -175,6 +198,7 @@ const KanbanBoard = ({ initialColumns, auth }) => {
                                                         <Ticket className="w-2.5 h-2.5" />
                                                         #{card.id_chamado}
                                                     </div>
+                                                    <PrazoBadge prazo={card.dt_prazo} status={card.st_status} size="xs" ocultarAberto />
                                                 </div>
                                                 <h4 className="text-[11px] font-bold text-slate-800 dark:text-slate-200 leading-tight mb-1.5 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                                                     {card.ds_titulo}
@@ -365,14 +389,26 @@ const KanbanBoard = ({ initialColumns, auth }) => {
                                     <div className="space-y-1.5">
                                         <label className="flex items-center gap-1.5 text-[11px] font-black text-slate-500 uppercase">
                                             <Calendar className="w-3.5 h-3.5 text-blue-500" />
-                                            Prazo
+                                            Prazo de entrega
                                         </label>
-                                        <Input
-                                            type="datetime-local"
-                                            className="w-full h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-lg text-[13px] font-bold text-slate-700 dark:text-slate-300 focus-visible:ring-blue-500/30"
-                                            value={chamadoData.chamado.dt_previsao_termino ? format(new Date(chamadoData.chamado.dt_previsao_termino), "yyyy-MM-dd'T'HH:mm") : ""}
-                                            onChange={handleUpdatePrevisao}
-                                        />
+                                        <div className="flex flex-col gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5">
+                                            <PrazoBadge prazo={chamadoData.chamado.dt_prazo} status={chamadoData.chamado.st_status} size="sm" className="self-start" />
+                                            {chamadoData.chamado.dt_prazo && (
+                                                <span className="text-[12px] font-bold text-slate-600 dark:text-slate-300">{formatPrazo(chamadoData.chamado.dt_prazo)}</span>
+                                            )}
+                                            {chamadoData.pode_alterar_prazo && STATUS_COM_PRAZO.includes(Number(chamadoData.chamado.st_status)) && (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => { setPrazoErro(null); setPrazoDialogOpen(true); }}
+                                                    className="h-8 gap-1.5 text-xs font-bold"
+                                                >
+                                                    <CalendarClock className="w-3.5 h-3.5" />
+                                                    {chamadoData.chamado.dt_prazo ? "Alterar prazo" : "Definir prazo"}
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
                                     <Link
                                         href={`/chamados/${chamadoData.chamado.id_chamado}`}
@@ -419,6 +455,16 @@ const KanbanBoard = ({ initialColumns, auth }) => {
                     ) : null}
                 </DialogContent>
             </Dialog>
+
+            <PrazoDialog
+                open={prazoDialogOpen}
+                onOpenChange={(open) => { setPrazoDialogOpen(open); if (!open) setPrazoErro(null); }}
+                modo={chamadoData?.chamado?.dt_prazo ? "alterar" : "definir"}
+                prazoAtual={chamadoData?.chamado?.dt_prazo}
+                processing={prazoProcessando}
+                erro={prazoErro}
+                onConfirmar={handleSalvarPrazo}
+            />
 
             <style dangerouslySetInnerHTML={{__html: `
                 .custom-scrollbar::-webkit-scrollbar {

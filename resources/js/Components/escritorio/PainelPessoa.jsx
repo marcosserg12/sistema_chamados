@@ -133,7 +133,7 @@ export default function PainelPessoa({ pessoa: p, config, euId, lider, podeEdita
                     </p>
                 )}
                 {lista.map((c) => (
-                    <ItemChamado key={`${aba}-${c.id}`} chamado={c} modo={aba === "fechados" ? "fechado" : aba} horasAtraso={config.horas_atraso} />
+                    <ItemChamado key={`${aba}-${c.id}`} chamado={c} modo={aba === "fechados" ? "fechado" : aba} />
                 ))}
             </div>
 

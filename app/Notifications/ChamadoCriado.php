@@ -40,6 +40,7 @@ class ChamadoCriado extends Notification implements ShouldBroadcast
             ->line('Um novo chamado foi aberto no sistema e requer sua atenção.')
             ->line('**Título:** ' . $this->chamado->ds_titulo)
             ->line('**Empresa:** ' . ($this->chamado->empresa->ds_empresa ?? '-'))
+            ->line('**Prazo de entrega:** ' . \App\Support\PrazoChamado::texto($this->chamado->dt_prazo, (int) $this->chamado->st_status))
             ->action('Visualizar Chamado', config('app.url') . "/chamados/{$this->chamado->id_chamado}")
             ->line('Obrigado por utilizar nosso sistema!');
     }
@@ -50,6 +51,7 @@ class ChamadoCriado extends Notification implements ShouldBroadcast
             'id_chamado' => $this->chamado->id_chamado,
             'title' => 'Novo Chamado Aberto',
             'message' => "O chamado #{$this->chamado->id_chamado} foi criado: {$this->chamado->ds_titulo}",
+            'prazo' => \App\Support\PrazoChamado::texto($this->chamado->dt_prazo, (int) $this->chamado->st_status),
             'url' => "/chamados/{$this->chamado->id_chamado}"
         ];
     }

@@ -14,13 +14,15 @@ import {
     Edit3,
     ArrowRight,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    CalendarClock
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import FaixaPrazos from "@/Components/chamados/FaixaPrazos";
 
-export default function Notificacoes({ notifications }) {
+export default function Notificacoes({ notifications, prazos }) {
     
     const markAllRead = () => {
         router.post(route('notifications.markAllRead'), {}, {
@@ -45,6 +47,7 @@ export default function Notificacoes({ notifications }) {
         if (type.includes('NovoComentario')) return <MessageSquare className="w-5 h-5 text-indigo-500" />;
         if (type.includes('ChamadoAtribuido')) return <UserPlus className="w-5 h-5 text-amber-500" />;
         if (type.includes('StatusAlterado')) return <CheckCircle2 className="w-5 h-5 text-emerald-500" />;
+        if (type.includes('Prazo')) return <CalendarClock className="w-5 h-5 text-rose-500" />;
         return <Bell className="w-5 h-5 text-slate-400" />;
     };
 
@@ -71,6 +74,8 @@ export default function Notificacoes({ notifications }) {
                         </Button>
                     )}
                 </div>
+
+                <FaixaPrazos prazos={prazos} className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm" />
 
                 <Card className="dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
                     <CardContent className="p-0">
@@ -114,6 +119,11 @@ export default function Notificacoes({ notifications }) {
                                             <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
                                                 {n.data.message}
                                             </p>
+                                            {n.data.prazo && (
+                                                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
+                                                    <CalendarClock className="w-3.5 h-3.5 shrink-0" /> Prazo: {n.data.prazo}
+                                                </p>
+                                            )}
                                             
                                             <div className="mt-4 flex items-center gap-3">
                                                 {n.data.url && (

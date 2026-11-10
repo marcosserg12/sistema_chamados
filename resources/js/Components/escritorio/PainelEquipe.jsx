@@ -138,7 +138,6 @@ export default function PainelEquipe({ dados, chefe, onSelecionar, onFechar }) {
                                 key={c.id}
                                 chamado={c}
                                 modo="fila"
-                                horasAtraso={dados.config.horas_atraso}
                                 extra={aba === "atrasados" && <span className="font-semibold text-slate-600 dark:text-slate-300">{c.tecnico ? `com ${c.tecnico}` : "sem responsável"}</span>}
                             />
                         ))}

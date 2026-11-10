@@ -1,9 +1,10 @@
 import React from "react";
 import { Link } from "@inertiajs/react";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarClock, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { StatusBadge } from "@/Components/ui/StatusBadge";
+import PrazoBadge from "@/Components/chamados/PrazoBadge";
 import { cn } from "@/lib/utils";
 
 export const haQuanto = (iso) => (iso ? formatDistanceToNow(new Date(iso), { addSuffix: true, locale: ptBR }) : "");
@@ -17,13 +18,13 @@ export function duracao(horas) {
 
 /**
  * Linha de chamado dos painéis do escritório. `modo` decide a linha de
- * informação: fila (idade e previsão), desenvolvendo (quando começou) ou
+ * informação: fila (idade e prazo), desenvolvendo (quando começou) ou
  * fechado (quando resolveu e quanto levou).
  */
-export default function ItemChamado({ chamado: c, modo = "fila", horasAtraso = 48, extra }) {
-    const idadeHoras = (Date.now() - new Date(c.aberto_em).getTime()) / 36e5;
-    // Aguardando teste e pausado não contam como atraso (dependem de fora da equipe).
-    const atrasado = modo === "fila" && [0, 1].includes(c.status) && idadeHoras > horasAtraso;
+export default function ItemChamado({ chamado: c, modo = "fila", extra }) {
+    // Regra vem do backend (EscritorioService::estaAtrasado): Em Andamento com
+    // prazo vencido ou Aberto sem ninguém há mais de horas_atraso.
+    const atrasado = modo === "fila" && !!c.atrasado;
     return (
         <Link
             href={`/chamados/${c.id}`}
@@ -48,11 +49,7 @@ export default function ItemChamado({ chamado: c, modo = "fila", horasAtraso = 4
                         <Clock className="w-3 h-3" /> aberto {haQuanto(c.aberto_em)}
                     </span>
                 )}
-                {modo === "fila" && c.previsao && (
-                    <span className="inline-flex items-center gap-1">
-                        <CalendarClock className="w-3 h-3" /> previsão {format(new Date(c.previsao), "dd/MM")}
-                    </span>
-                )}
+                {modo === "fila" && <PrazoBadge prazo={c.prazo} status={c.status} size="xs" ocultarAberto />}
                 {modo === "desenvolvendo" && c.iniciado_em && <span>começou {haQuanto(c.iniciado_em)}</span>}
                 {modo === "fechado" && (
                     <span>

@@ -6,6 +6,7 @@ import axios from "axios";
 import { GripVertical, AlertCircle, Clock, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { getStatusBadgeClass, getStatusLabel as getStatusLabelShared } from "@/lib/statusChamado";
+import PrazoBadge from "@/Components/chamados/PrazoBadge";
 
 const MinhaFila = ({ chamadosFila }) => {
     const [items, setItems] = useState([]);
@@ -157,6 +158,7 @@ const MinhaFila = ({ chamadosFila }) => {
                                                     </div>
 
                                                     <div className="flex items-center gap-3 shrink-0">
+                                                        <PrazoBadge prazo={chamado.dt_prazo} status={chamado.st_status} />
                                                         <span className={`px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap shadow-sm ${getStatusColor(chamado.st_status)}`}>
                                                             {getStatusLabel(chamado.st_status)}
                                                         </span>

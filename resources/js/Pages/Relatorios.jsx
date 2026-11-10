@@ -18,6 +18,7 @@ import {
   Download, SlidersHorizontal, Users2, Info, ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import PrazoBadge from "@/Components/chamados/PrazoBadge";
 
 export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filters, tecnicos = [], tipos = [], modo, cargaPorTecnico = [] }) {
   const [status, setStatus] = useState(filters?.status || "todos");
@@ -293,6 +294,7 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
                       <div className="flex flex-wrap gap-1.5 mb-2.5">
                         <MiniBadge>{c.tipo}</MiniBadge>
                         <CategoriaPill categoria={c.categoria} />
+                        <PrazoBadge prazo={c.dt_prazo} status={c.st_status} size="xs" ocultarAberto />
                       </div>
                       <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
                         <span className="truncate"><strong className="text-slate-600 dark:text-slate-300 font-semibold">Técnico:</strong> {c.tecnico}</span>
@@ -310,13 +312,14 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
                   <table className="w-full table-fixed text-sm text-left">
                     <colgroup>
                       <col className="w-[5%]" />
-                      <col className="w-[21%]" />
+                      <col className="w-[18%]" />
                       <col className="w-[8%]" />
-                      <col className="w-[19%]" />
-                      <col className="w-[11%]" />
+                      <col className="w-[17%]" />
                       <col className="w-[10%]" />
-                      <col className="w-[14%]" />
+                      <col className="w-[10%]" />
+                      <col className="w-[10%]" />
                       <col className="w-[12%]" />
+                      <col className="w-[10%]" />
                     </colgroup>
                     <thead className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider bg-slate-50/80 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-700">
                       <tr>
@@ -326,6 +329,7 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
                         <th className="px-3 py-3 font-bold">Classificação</th>
                         <th className="px-3 py-3 font-bold">Técnico</th>
                         <th className="px-3 py-3 font-bold">Status</th>
+                        <th className="px-3 py-3 font-bold">Prazo</th>
                         <th className="px-3 py-3 font-bold">
                           <TooltipProvider delayDuration={150}>
                             <Tooltip>
@@ -365,6 +369,7 @@ export default function Relatorios({ periodo, kpis, tabela, isVisaoGeral, filter
                           </td>
                           <td className="px-3 py-3 truncate text-slate-600 dark:text-slate-400" title={c.tecnico}>{c.tecnico}</td>
                           <td className="px-3 py-3"><StatusPill status={c.st_status} label={c.status} /></td>
+                          <td className="px-3 py-3"><PrazoBadge prazo={c.dt_prazo} status={c.st_status} size="xs" /></td>
                           <td className="px-3 py-3"><CategoriaPill categoria={c.categoria} /></td>
                           <td className="px-3 py-3 truncate text-xs text-slate-500 dark:text-slate-400">{c.data_referencia}</td>
                         </tr>

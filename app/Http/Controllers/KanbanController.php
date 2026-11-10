@@ -35,6 +35,7 @@ class KanbanController extends Controller
                 'tb_chamados.ordem_kanban',
                 'tb_chamados.dt_data_chamado',
                 'tb_chamados.st_grau',
+                'tb_chamados.dt_prazo',
                 'u_solic.ds_nome as ds_nome_solicitante',
                 'u_solic.ds_foto as ds_foto_solicitante',
                 'u_tec.ds_nome as ds_nome_tecnico',
@@ -110,8 +111,9 @@ class KanbanController extends Controller
         // Optionally, we can use the ChamadoService to trigger proper updates, 
         // e.g. HistoricoStatusChamado and notifications.
         if ($oldStatus != $newStatus) {
+            $request->validate(['dt_prazo' => 'nullable|date_format:Y-m-d']);
             $service = app(\App\Services\ChamadoService::class);
-            $service->atualizarStatus($chamado, $newStatus, $user);
+            $service->atualizarStatus($chamado, (int) $newStatus, $user, $request->input('dt_prazo'));
         }
 
         $chamado->ordem_kanban = $request->new_order;

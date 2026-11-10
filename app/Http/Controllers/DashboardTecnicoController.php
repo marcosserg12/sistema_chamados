@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Chamado;
+use App\Support\PrazoChamado;
 use App\Support\StatusChamado;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -41,11 +42,13 @@ class DashboardTecnicoController extends Controller
             ->whereIn('tb_chamados.st_status', StatusChamado::GRUPO_RESOLVIDO)
             ->count();
 
-        $meusAtrasados = DB::table('rl_chamado_usuario')
-            ->join('tb_chamados', 'rl_chamado_usuario.id_chamado', '=', 'tb_chamados.id_chamado')
-            ->where('rl_chamado_usuario.id_usuario', $id_usuario)
-            ->whereIn('tb_chamados.st_status', StatusChamado::GRUPO_PENDENTE)
-            ->where('tb_chamados.dt_data_chamado', '<', Carbon::now()->subHours(48))
+        // Atrasado = pendente com o prazo de entrega vencido (PrazoChamado).
+        $meusAtrasados = Chamado::comPrazoAtrasado()
+            ->whereHas('relacionamentoUsuarios', fn ($q) => $q->where('id_usuario', $id_usuario))
+            ->count();
+
+        $meusVenceHoje = Chamado::comPrazoVencendoHoje()
+            ->whereHas('relacionamentoUsuarios', fn ($q) => $q->where('id_usuario', $id_usuario))
             ->count();
 
         // 2. Meus Gráficos
@@ -91,7 +94,11 @@ class DashboardTecnicoController extends Controller
             ->leftJoin('tb_motivo_associado as ma', 'c.id_motivo_associado', '=', 'ma.id_motivo_associado')
             ->where('rl.id_usuario', $id_usuario)
             ->whereIn('c.st_status', StatusChamado::GRUPO_PENDENTE)
-            ->select('c.id_chamado', 'c.ds_titulo', 'e.ds_empresa', 'c.dt_data_chamado', 'c.st_status', 'ma.ds_descricao_motivo as motivo')
+            ->select('c.id_chamado', 'c.ds_titulo', 'e.ds_empresa', 'c.dt_data_chamado', 'c.st_status', 'c.dt_prazo', 'ma.ds_descricao_motivo as motivo')
+            // Por urgência: prazo mais antigo primeiro (atrasados, vence hoje,
+            // próximos); sem prazo por último, do mais antigo para o mais novo.
+            ->orderByRaw('CASE WHEN c.dt_prazo IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('c.dt_prazo', 'asc')
             ->orderBy('c.dt_data_chamado', 'asc')
             ->limit(10)
             ->get()
@@ -103,7 +110,8 @@ class DashboardTecnicoController extends Controller
                 'motivo' => $c->motivo ?? 'Geral',
                 'data' => Carbon::parse($c->dt_data_chamado)->format('d/m H:i'),
                 'tempo_aberto' => $this->formatarTempoAberto($c->dt_data_chamado),
-                'atrasado' => Carbon::parse($c->dt_data_chamado)->isBefore(Carbon::now()->subHours(48))
+                'dt_prazo' => $c->dt_prazo?->toDateString(),
+                'atrasado' => PrazoChamado::situacao($c->dt_prazo, (int) $c->st_status) === PrazoChamado::ATRASADO,
             ]);
 
         // 4. Fila de Espera (Abertos sem técnico)
@@ -167,6 +175,7 @@ class DashboardTecnicoController extends Controller
                 'ativos' => $meusAtivos,
                 'resolvidos' => $meusResolvidos,
                 'atrasados' => $meusAtrasados,
+                'vence_hoje' => $meusVenceHoje,
             ],
             'dailyTrend' => $dailyTrend,
             'mesAtualPerformance' => $mesAtualPerformance,

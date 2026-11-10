@@ -13,12 +13,13 @@ import {
     SelectLabel,
     SelectGroup,
 } from "@/Components/ui/select";
-import { Search, Inbox, Activity, CheckCircle2, User, MapPin, Tag, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Inbox, Activity, CheckCircle2, User, MapPin, Tag, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/Components/ui/avatar";
 import { StatusBadge } from "@/Components/ui/StatusBadge";
+import PrazoBadge from "@/Components/chamados/PrazoBadge";
 
 export default function Chamados({ chamados, tecnicos, solicitantes = [], localizacoes = [], stats, filters }) {
     const { auth } = usePage().props;
@@ -27,6 +28,7 @@ export default function Chamados({ chamados, tecnicos, solicitantes = [], locali
     const [tecnico, setTecnico] = useState(filters?.tecnico || "todos");
     const [solicitante, setSolicitante] = useState(filters?.solicitante || "todos");
     const [localizacao, setLocalizacao] = useState(filters?.localizacao || "todos");
+    const [prazo, setPrazo] = useState(filters?.prazo || "todos");
 
     const isFirstRender = useRef(true);
 
@@ -49,7 +51,7 @@ export default function Chamados({ chamados, tecnicos, solicitantes = [], locali
         const delayDebounceFn = setTimeout(() => {
             router.get(
                 "/chamados",
-                { search, status, tecnico, solicitante, localizacao },
+                { search, status, tecnico, solicitante, localizacao, prazo },
                 {
                     preserveState: true,
                     preserveScroll: true,
@@ -59,7 +61,7 @@ export default function Chamados({ chamados, tecnicos, solicitantes = [], locali
         }, 400);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [search, status, tecnico, solicitante, localizacao]);
+    }, [search, status, tecnico, solicitante, localizacao, prazo]);
 
 
     return (
@@ -90,6 +92,22 @@ export default function Chamados({ chamados, tecnicos, solicitantes = [], locali
                                     <SelectItem value="3" className="text-[14px] dark:focus:bg-slate-700 font-medium">Pausado/Aguardando Peça</SelectItem>
                                     <SelectItem value="8" className="text-[14px] dark:focus:bg-slate-700 font-medium">Cancelado</SelectItem>
                                 </SelectGroup>
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={prazo} onValueChange={setPrazo}>
+                            <SelectTrigger className={cn(
+                                "w-full sm:w-[150px] h-10 bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 shadow-sm focus:ring-0 text-[14px] hover:dark:border-slate-600 font-medium transition-colors",
+                                prazo === "atrasado" && "border-rose-300 text-rose-700 dark:border-rose-500/50 dark:text-rose-300"
+                            )}>
+                                <SelectValue placeholder="Prazo" />
+                            </SelectTrigger>
+                            <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
+                                <SelectItem value="todos" className="text-[14px] dark:focus:bg-slate-700 font-medium">Todos os Prazos</SelectItem>
+                                <SelectItem value="atrasado" className="text-[14px] dark:focus:bg-slate-700 font-medium">Atrasados</SelectItem>
+                                <SelectItem value="vence_hoje" className="text-[14px] dark:focus:bg-slate-700 font-medium">Vencem hoje</SelectItem>
+                                <SelectItem value="no_prazo" className="text-[14px] dark:focus:bg-slate-700 font-medium">No prazo</SelectItem>
+                                <SelectItem value="sem_prazo" className="text-[14px] dark:focus:bg-slate-700 font-medium">Sem prazo</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -138,7 +156,7 @@ export default function Chamados({ chamados, tecnicos, solicitantes = [], locali
                 </div>
 
                 {/* CARDS DE ESTATÍSTICAS */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <Card className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50 shadow-sm rounded-lg backdrop-blur-sm">
                         <CardContent className="p-3 flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-500/20 flex items-center justify-center shrink-0 border border-transparent dark:border-blue-500/20">
@@ -186,6 +204,32 @@ export default function Chamados({ chamados, tecnicos, solicitantes = [], locali
                             </div>
                         </CardContent>
                     </Card>
+
+                    <button
+                        type="button"
+                        onClick={() => setPrazo(prazo === "atrasado" ? "todos" : "atrasado")}
+                        title={prazo === "atrasado" ? "Mostrar todos" : "Mostrar só os atrasados"}
+                        className="text-left"
+                    >
+                        <Card className={cn(
+                            "h-full bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50 shadow-sm rounded-lg backdrop-blur-sm transition-colors hover:border-rose-300",
+                            prazo === "atrasado" && "border-rose-400 dark:border-rose-500/60 ring-1 ring-rose-400/40"
+                        )}>
+                            <CardContent className="p-3 flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-rose-50 dark:bg-rose-500/20 flex items-center justify-center shrink-0 border border-transparent dark:border-rose-500/20">
+                                    <AlertTriangle className="w-5 h-5 text-rose-500 dark:text-rose-400" />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none mb-1">
+                                        Atrasados
+                                    </span>
+                                    <span className={cn("text-xl font-black leading-none", (stats?.atrasados || 0) > 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-slate-100")}>
+                                        {stats?.atrasados || 0}
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </button>
                 </div>
 
                 {/* CONTAINER DA TABELA */}
@@ -215,6 +259,7 @@ export default function Chamados({ chamados, tecnicos, solicitantes = [], locali
                                     <th className="px-4 py-4">CRIADOR</th>
                                     <th className="px-4 py-4">ATRIBUÍDO</th>
                                     <th className="px-4 py-4 text-center">STATUS</th>
+                                    <th className="px-4 py-4">PRAZO</th>
                                     <th className="px-4 py-4">DATA</th>
                                 </tr>
                             </thead>
@@ -222,7 +267,7 @@ export default function Chamados({ chamados, tecnicos, solicitantes = [], locali
                                 {!chamados.data || chamados.data.length === 0 ? (
                                     <tr>
                                         <td
-                                            colSpan={8}
+                                            colSpan={9}
                                             className="px-4 py-8 text-center text-slate-400 dark:text-slate-500 font-medium"
                                         >
                                             Nenhum chamado encontrado.
@@ -309,6 +354,9 @@ export default function Chamados({ chamados, tecnicos, solicitantes = [], locali
 
                                             <td className="px-4 py-3.5 text-center">
                                                 <StatusBadge status={Number(chamado.st_status)} />
+                                            </td>
+                                            <td className="px-4 py-3.5">
+                                                <PrazoBadge prazo={chamado.dt_prazo} status={chamado.st_status} />
                                             </td>
                                             <td className="px-4 py-3.5 text-slate-500 dark:text-slate-400 font-medium">
                                                 {format(

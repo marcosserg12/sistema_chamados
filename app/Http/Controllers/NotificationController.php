@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Chamado;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -15,8 +16,28 @@ class NotificationController extends Controller
 
         return response()->json([
             'notifications' => $notifications,
-            'unreadCount' => $unreadCount
+            'unreadCount' => $unreadCount,
+            'prazos' => $this->resumoPrazos(auth()->user()),
         ]);
+    }
+
+    /**
+     * Quantos chamados "da pessoa" estão atrasados ou vencem hoje — a faixa
+     * fixa no topo do sino e da página de notificações. Técnico: os dele;
+     * admin: todos; usuário e gestor: os que já enxergam.
+     */
+    private function resumoPrazos($user): array
+    {
+        $base = Chamado::query()->doPainelDePrazos($user);
+
+        $filtroTecnico = (int) $user->id_perfil === 4 ? ['tecnico' => $user->id_usuario] : [];
+
+        return [
+            'atrasados' => (clone $base)->comPrazoAtrasado()->count(),
+            'vence_hoje' => (clone $base)->comPrazoVencendoHoje()->count(),
+            'url_atrasados' => '/chamados?' . http_build_query(['prazo' => 'atrasado'] + $filtroTecnico),
+            'url_vence_hoje' => '/chamados?' . http_build_query(['prazo' => 'vence_hoje'] + $filtroTecnico),
+        ];
     }
 
     // Tela de listagem completa
@@ -25,7 +46,8 @@ class NotificationController extends Controller
         $notifications = auth()->user()->notifications()->paginate(20);
         
         return Inertia::render('Notificacoes', [
-            'notifications' => $notifications
+            'notifications' => $notifications,
+            'prazos' => $this->resumoPrazos(auth()->user()),
         ]);
     }
 

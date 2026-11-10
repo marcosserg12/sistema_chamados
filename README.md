@@ -13,7 +13,8 @@ Help desk multiempresa para abrir, triar e acompanhar chamados de suporte de TI,
 - **Notificações multicanal.** Central de notificações no sistema, notificação nativa do navegador, e-mail e WhatsApp (Evolution API), conforme as preferências de cada usuário.
 - **Multiempresa com 5 perfis de acesso.** Usuários são vinculados a empresas e localizações. O que cada perfil enxerga é definido em *query scopes* do Eloquent, reaproveitados na listagem, na busca, nos dashboards e no relatório.
 - **Dashboards por perfil e relatório semanal em PDF.** Indicadores e gráficos (Recharts) para a administração e para cada técnico, mais um relatório semanal com filtros e exportação via DomPDF.
-- **Organização do trabalho técnico.** Quadro Kanban com checklist, previsão de término e observações internas por chamado, e fila pessoal do técnico reordenável com drag and drop.
+- **Organização do trabalho técnico.** Quadro Kanban com checklist e observações internas por chamado, e fila pessoal do técnico reordenável com drag and drop.
+- **Prazo de entrega com cobrança automática.** Quem assume um chamado é obrigado a informar até quando vai entregar; mudar o prazo depois exige justificativa, que fica no histórico e vai para o solicitante. De segunda a sexta, às 8h, um comando agendado avisa quem precisa agir sobre os chamados que vencem no dia ou já passaram do prazo.
 
 ## Funcionalidades
 
@@ -21,25 +22,28 @@ Help desk multiempresa para abrir, triar e acompanhar chamados de suporte de TI,
 - Abertura de chamado por empresa e localização vinculadas ao usuário, com classificação em três níveis, patrimônio e anexos de até 50 MB (imagens, PDF, Office, áudio).
 - "Abrir com IA" (experimental), com ditado por voz via Web Speech API.
 - Chat com o técnico responsável: anexos, mensagens de voz gravadas no navegador e confirmação de leitura.
-- Histórico unificado do chamado: mudanças de status, atribuições, observações e edições.
+- Histórico unificado do chamado: mudanças de status, atribuições, mudanças de prazo (com a justificativa), observações e edições.
+- Prazo de entrega visível no chamado e nas listas; aviso quando o prazo é definido ou alterado, e no dia em que vence. Chamados Pausados ou Aguardando Teste com prazo vencido geram um lembrete por dia útil para o solicitante.
 - Configurações pessoais: canais de notificação, foto de perfil com recorte e tema escuro.
 
 O perfil **Gestor** vê os chamados das localizações que gerencia.
 
 ### Técnico
 - Dashboard pessoal com:
-  - chamados ativos, resolvidos e atrasados (abertos há mais de 48 h);
+  - chamados ativos, resolvidos e atrasados (prazo de entrega vencido);
   - tendência dos últimos 14 dias, produtividade diária do mês e resolvidos nos últimos 6 meses;
   - tempo médio de resolução e a fila de chamados abertos ainda sem responsável.
 - Fila pessoal reordenável por drag and drop.
-- Quadro Kanban (Aberto, Em Andamento, Resolvidos nos últimos 7 dias) com modal de detalhes: checklist com progresso, previsão de término e observações internas.
-- Seis status de chamado. Quem coloca um chamado "Em Andamento" assume a responsabilidade por ele, e reabrir o chamado remove o responsável.
+- Quadro Kanban (Aberto, Em Andamento, Resolvidos nos últimos 7 dias) com selo de prazo nos cartões e modal de detalhes: checklist com progresso, prazo de entrega e observações internas.
+- Seis status de chamado. Quem coloca um chamado "Em Andamento" assume a responsabilidade por ele, e reabrir o chamado remove o responsável (e o prazo).
+- Prazo de entrega obrigatório ao assumir um chamado (ou atribuí-lo a alguém). Só o responsável e os administradores alteram o prazo, sempre com justificativa. Chamados de antes dessa regra ficam como "Sem prazo" até alguém definir.
+- Lembretes de prazo de segunda a sexta às 8h: um resumo por pessoa no WhatsApp e no e-mail, e uma notificação por chamado no sino. O sino também mostra uma faixa fixa com os chamados atrasados e os que vencem hoje.
 - Chat da equipe técnica com menções, anexos e áudio.
 - Relatório semanal restrito aos próprios chamados.
 
 ### Administrador e Super Admin
 - Dashboard geral com:
-  - KPIs, chamados atrasados e tendência de 14 dias;
+  - KPIs, chamados atrasados (prazo vencido, com o técnico) e tendência de 14 dias;
   - distribuição por status e top 5 localizações;
   - carga atual e histórico por técnico, e a tabela de pendentes.
 - Relatório semanal (ciclo de terça a terça ou período personalizado):
@@ -55,7 +59,7 @@ O perfil **Gestor** vê os chamados das localizações que gerencia.
 
 ### Escritório 3D (`/escritorio`)
 Visão em Three.js da equipe técnica, só para os técnicos e o coordenador. Atualiza sozinha a cada 30 s.
-- Cada técnico tem uma baia; quem senta com quem fica em `fileiras` no config; quem está em `infra` no config (hoje o Jeliel) fica na área de Infraestrutura, ao lado dos racks. Os papéis na mesa são a fila dele (cor = status), o monitor mostra o chamado em andamento, a luz vermelha acende quando há chamado Aberto ou Em Andamento há mais de 48 h (Aguardando Teste e Pausado não contam como atraso) e o troféu vai para quem mais resolveu nos últimos 7 dias.
+- Cada técnico tem uma baia; quem senta com quem fica em `fileiras` no config; quem está em `infra` no config (hoje o Jeliel) fica na área de Infraestrutura, ao lado dos racks. Os papéis na mesa são a fila dele (cor = status), o monitor mostra o chamado em andamento, a luz vermelha acende quando há chamado Em Andamento com o prazo de entrega vencido ou chamado Aberto que ninguém assumiu há mais de 48 h (Aguardando Teste e Pausado não contam como atraso) e o troféu vai para quem mais resolveu nos últimos 7 dias.
 - O rodapé passa as últimas movimentações uma a uma (pausa com o mouse em cima). O painel "Movimento recente", minimizado no canto, abre com tudo que mudou de status nos últimos 7 dias, os últimos fechados e os últimos que alguém pegou para fazer; o que mudou na última hora fica destacado.
 - Clicar na baia abre a fila, os últimos chamados colocados em andamento (30 dias) e os últimos fechados, com links para cada chamado.
 - O coordenador (Renato Lima, `config('escritorio.chefe')`) fica na sala de vidro; clicar nele, no painel da parede ou na mesa de triagem abre a visão da equipe: carga de cada um, atrasados, fila sem responsável e ranking. De tempos em tempos ele sai da sala e passa nas baias em rodízio, por todos da equipe.
@@ -84,6 +88,8 @@ Visão em Three.js da equipe técnica, só para os técnicos e o coordenador. At
   - os agrupamentos usados nos indicadores (por exemplo, "Pausado" conta como em andamento e "Cancelado" como resolvido).
 
   Assim, listagem, dashboards e relatório mostram os mesmos números.
+- **Prazo como fonte única.** `app/Support/PrazoChamado.php` (espelhado em `resources/js/lib/prazoChamado.js`) define quando uma mudança de status exige prazo, a situação do prazo (a definir, sem prazo, no prazo, vence hoje, atrasado, encerrado), os textos usados nas mensagens e quem recebe cada lembrete. O prazo é só uma data: o chamado vence no fim do dia. A regra é aplicada no `ChamadoService`, então tela, Kanban e API recusam do mesmo jeito um aceite sem prazo.
+- **Lembretes idempotentes.** O comando `chamados:lembrar-prazos` (`app/Services/LembretePrazoService.php`) marca em `tb_chamados.dt_lembrete_prazo` o dia em que cada chamado entrou no lembrete; rodar de novo no mesmo dia não reenvia nada. Com `--simular`, mostra quem receberia o quê sem enviar.
 - **Relatório baseado em histórico.** "Resolvidos no período" é calculado pelo histórico de status, não pela data de abertura. Um chamado aberto antes do ciclo e resolvido durante ele entra na conta. O cálculo do ciclo de terça a terça fica isolado em `app/Support/PeriodoRelatorio.php`, que tem testes.
 
 ## Como rodar localmente
@@ -137,6 +143,20 @@ php artisan reverb:start   # em outro terminal: servidor WebSocket
 
 No Windows, o Pail não roda (exige a extensão `pcntl`). Nesse caso, rode `php artisan serve`, `php artisan queue:listen` e `npm run dev` em terminais separados. A fila precisa estar rodando para entregar as notificações em tempo real.
 
+### Lembretes de prazo (agendador)
+
+Os lembretes diários de prazo rodam pelo agendador do Laravel (`routes/console.php`, segunda a sexta às 8h). Em produção, o cron do servidor precisa chamar o agendador a cada minuto:
+
+```bash
+* * * * * cd /caminho/do/sistema && php artisan schedule:run >> /dev/null 2>&1
+```
+
+No Windows, crie no Agendador de Tarefas uma tarefa que roda `php artisan schedule:run` a cada minuto. Para conferir antes de ligar, sem enviar nada:
+
+```bash
+php artisan chamados:lembrar-prazos --simular
+```
+
 ## Variáveis de ambiente
 
 Além das variáveis padrão do Laravel:
@@ -161,6 +181,9 @@ As mensagens de WhatsApp só são enviadas a usuários com o canal ativo nas con
 ```bash
 php artisan test --testsuite=Unit
 ```
+
+- `tests/Unit/PrazoChamadoTest.php` cobre as regras de prazo: quais mudanças de status exigem prazo, a situação na virada do dia, os textos das mensagens e a tabela de quem recebe cada lembrete.
+- `tests/Unit/LembretePrazoTest.php` cobre a montagem dos lembretes por pessoa e o texto do resumo de WhatsApp.
 
 `tests/Unit/PeriodoRelatorioTest.php` cobre o cálculo do ciclo do relatório semanal (terça a terça) em quatro cenários, usando `Carbon::setTestNow()`:
 - relatório aberto na própria terça;

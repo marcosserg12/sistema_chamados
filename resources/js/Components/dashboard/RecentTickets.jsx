@@ -6,6 +6,7 @@ import { StatusBadge, PrioridadeBadge } from "@/Components/ui/StatusBadge";
 import { Ticket, ArrowRight, Calendar, Clock, Tag, RefreshCw } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
+import PrazoBadge from "@/Components/chamados/PrazoBadge";
 
 export default function RecentTickets({ chamados = [] }) {
   const [refreshing, setRefreshing] = useState(false);
@@ -104,9 +105,10 @@ export default function RecentTickets({ chamados = [] }) {
                     </div>
                   </div>
 
-                  {/* Lado Direito: Status */}
-                  <div className="flex items-center shrink-0">
+                  {/* Lado Direito: Status e prazo */}
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
                     <StatusBadge status={Number(chamado.st_status)} />
+                    <PrazoBadge prazo={chamado.dt_prazo} status={chamado.st_status} size="xs" ocultarAberto />
                   </div>
 
                 </div>

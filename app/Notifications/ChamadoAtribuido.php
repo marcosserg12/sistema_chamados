@@ -38,6 +38,7 @@ class ChamadoAtribuido extends Notification implements ShouldBroadcast
             ->greeting('Olá, ' . $notifiable->ds_nome)
             ->line('Você foi designado como responsável pelo chamado abaixo:')
             ->line('**Assunto:** ' . $this->chamado->ds_titulo)
+            ->line('**Prazo de entrega:** ' . \App\Support\PrazoChamado::texto($this->chamado->dt_prazo, (int) $this->chamado->st_status))
             ->action('Acessar Chamado', config('app.url') . "/chamados/{$this->chamado->id_chamado}")
             ->line('Bom trabalho!');
     }
@@ -48,6 +49,7 @@ class ChamadoAtribuido extends Notification implements ShouldBroadcast
             'id_chamado' => $this->chamado->id_chamado,
             'title' => 'Novo Chamado Atribuído',
             'message' => "Você foi designado como responsável pelo chamado #{$this->chamado->id_chamado}.",
+            'prazo' => \App\Support\PrazoChamado::texto($this->chamado->dt_prazo, (int) $this->chamado->st_status),
             'url' => "/chamados/{$this->chamado->id_chamado}"
         ];
     }

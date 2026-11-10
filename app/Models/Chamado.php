@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\PrazoChamado;
 use App\Support\StatusChamado;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,6 +23,13 @@ class Chamado extends Model
     const UPDATED_AT = 'dt_update';
 
     protected $guarded = [];
+
+    // 'date:Y-m-d' para o prazo chegar no frontend como "2026-11-15" (sem
+    // hora/fuso), do mesmo jeito que chega das consultas com join.
+    protected $casts = [
+        'dt_prazo' => 'date:Y-m-d',
+        'dt_lembrete_prazo' => 'date:Y-m-d',
+    ];
 
     /**
      * Relacionamento com o Solicitante
@@ -73,6 +82,11 @@ class Chamado extends Model
     public function historicosStatus(): HasMany
     {
         return $this->hasMany(HistoricoStatusChamado::class, 'id_chamado', 'id_chamado');
+    }
+
+    public function historicosPrazo(): HasMany
+    {
+        return $this->hasMany(HistoricoPrazoChamado::class, 'id_chamado', 'id_chamado');
     }
 
     public function anexos(): HasMany
@@ -189,7 +203,55 @@ class Chamado extends Model
             }
         });
 
+        $query->when($filters['prazo'] ?? null, function ($q, $prazo) {
+            match ($prazo) {
+                PrazoChamado::ATRASADO => $q->comPrazoAtrasado(),
+                PrazoChamado::VENCE_HOJE => $q->comPrazoVencendoHoje(),
+                PrazoChamado::NO_PRAZO => $q->whereIn('tb_chamados.st_status', PrazoChamado::STATUS_COM_PRAZO)
+                    ->where('tb_chamados.dt_prazo', '>', Carbon::today()->toDateString()),
+                PrazoChamado::SEM_PRAZO => $q->whereIn('tb_chamados.st_status', PrazoChamado::STATUS_COM_PRAZO)
+                    ->whereNull('tb_chamados.dt_prazo'),
+                default => null,
+            };
+        });
+
         return $query;
+    }
+
+    /**
+     * Pendentes (Em Andamento, Pausado, Aguardando Teste) com o prazo vencido.
+     * Mesma regra de PrazoChamado::situacao() === ATRASADO.
+     */
+    public function scopeComPrazoAtrasado($query)
+    {
+        return $query->whereIn('tb_chamados.st_status', PrazoChamado::STATUS_COM_PRAZO)
+            ->where('tb_chamados.dt_prazo', '<', Carbon::today()->toDateString());
+    }
+
+    /**
+     * Pendentes cujo prazo é hoje.
+     */
+    public function scopeComPrazoVencendoHoje($query)
+    {
+        return $query->whereIn('tb_chamados.st_status', PrazoChamado::STATUS_COM_PRAZO)
+            ->where('tb_chamados.dt_prazo', Carbon::today()->toDateString());
+    }
+
+    /**
+     * Chamados "da pessoa" para o resumo de prazos do sino: técnico vê os
+     * dele, admin vê todos, usuário e gestor veem o que já enxergam hoje.
+     */
+    public function scopeDoPainelDePrazos($query, $user)
+    {
+        if (in_array((int) $user->id_perfil, [1, 5], true)) {
+            return $query;
+        }
+
+        if ((int) $user->id_perfil === 4) {
+            return $query->whereHas('relacionamentoUsuarios', fn ($q) => $q->where('id_usuario', $user->id_usuario));
+        }
+
+        return $query->visivelPara($user);
     }
 
     /**

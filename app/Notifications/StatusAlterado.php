@@ -41,6 +41,7 @@ class StatusAlterado extends Notification implements ShouldBroadcast
             ->greeting('Olá, ' . $notifiable->ds_nome)
             ->line('O status do seu chamado foi atualizado.')
             ->line('**Novo Status:** ' . $statusTxt)
+            ->line('**Prazo de entrega:** ' . \App\Support\PrazoChamado::texto($this->chamado->dt_prazo, (int) $this->chamado->st_status))
             ->action('Ver Chamado', config('app.url') . "/chamados/{$this->chamado->id_chamado}")
             ->line('Obrigado!');
     }
@@ -53,6 +54,7 @@ class StatusAlterado extends Notification implements ShouldBroadcast
             'id_chamado' => $this->chamado->id_chamado,
             'title' => 'Status Alterado',
             'message' => "O status do chamado #{$this->chamado->id_chamado} foi alterado para: {$statusTxt}.",
+            'prazo' => \App\Support\PrazoChamado::texto($this->chamado->dt_prazo, (int) $this->chamado->st_status),
             'url' => "/chamados/{$this->chamado->id_chamado}"
         ];
     }

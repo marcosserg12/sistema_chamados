@@ -42,6 +42,7 @@ class NovoComentario extends Notification implements ShouldQueue, ShouldBroadcas
             ->line('Há uma nova observação no chamado #' . $this->chamado->id_chamado)
             ->line('**Enviado por:** ' . $this->usuario->ds_nome)
             ->line('**Comentário:** ' . $this->comentario->ds_comentario)
+            ->line('**Prazo de entrega:** ' . \App\Support\PrazoChamado::texto($this->chamado->dt_prazo, (int) $this->chamado->st_status))
             ->action('Responder no Chamado', config('app.url') . "/chamados/{$this->chamado->id_chamado}")
             ->line('Atenciosamente.');
     }
@@ -52,6 +53,7 @@ class NovoComentario extends Notification implements ShouldQueue, ShouldBroadcas
             'id_chamado' => $this->chamado->id_chamado,
             'title' => 'Novo Comentário',
             'message' => "{$this->usuario->ds_nome}: {$this->comentario->ds_comentario}",
+            'prazo' => \App\Support\PrazoChamado::texto($this->chamado->dt_prazo, (int) $this->chamado->st_status),
             'url' => "/chamados/{$this->chamado->id_chamado}"
         ];
     }

@@ -33,12 +33,17 @@ class SearchController extends Controller
             ->limit(5)
             ->get()
             ->map(function($c) {
+                $situacao = \App\Support\PrazoChamado::situacao($c->dt_prazo, (int) $c->st_status);
+                $prazo = in_array($situacao, [\App\Support\PrazoChamado::ATRASADO, \App\Support\PrazoChamado::VENCE_HOJE], true)
+                    ? ' · ' . \App\Support\PrazoChamado::descricao($c->dt_prazo, (int) $c->st_status)
+                    : '';
+
                 return [
                     'id' => $c->id_chamado,
                     'title' => $c->ds_titulo,
                     'type' => 'Chamado',
                     'url' => "/chamados/{$c->id_chamado}",
-                    'subtitle' => "#{$c->id_chamado}"
+                    'subtitle' => "#{$c->id_chamado}{$prazo}"
                 ];
             });
         

@@ -33,7 +33,8 @@ import {
   HelpCircle,
   Info,
   Kanban,
-  Armchair
+  Armchair,
+  CalendarClock
 } from "lucide-react";
 import { Button } from "@/Components/ui/button";
 import { Input } from "@/Components/ui/input";
@@ -56,6 +57,7 @@ import {
 import { cn } from "@/lib/utils";
 import TechChat from "@/Components/TechChat";
 import NovidadesModal from "@/Components/NovidadesModal";
+import FaixaPrazos from "@/Components/chamados/FaixaPrazos";
 import { Toaster } from "@/Components/ui/sonner";
 
 // Flag global para persistir o estado de desbloqueio de áudio entre navegações SPA (Inertia)
@@ -119,6 +121,8 @@ function LayoutContent({ children }) {
   // Estados para Notificações
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  // Resumo de prazos da pessoa (atrasados / vencem hoje) para a faixa do sino.
+  const [prazos, setPrazos] = useState(null);
 
   // Usamos useRef para que o valor seja sempre o mais atualizado dentro do setInterval (evita closure stale)
   const lastNotificationIdRef = useRef(localStorage.getItem("last_notif_id"));
@@ -241,7 +245,10 @@ function LayoutContent({ children }) {
           if (user?.preferencias?.canal_navegador !== false && Notification.permission === "granted") {
             // Título e mensagem vindos diretamente do banco de dados (Laravel Notification)
             const title = latestNotif.data.title || "Nova Notificação";
-            const message = latestNotif.data.message || latestNotif.data.ds_descricao || "";
+            const message = [
+              latestNotif.data.message || latestNotif.data.ds_descricao || "",
+              latestNotif.data.prazo ? `Prazo: ${latestNotif.data.prazo}` : "",
+            ].filter(Boolean).join("\n");
             const targetUrl = latestNotif.data.url;
 
             const n = new Notification(title, {
@@ -271,6 +278,7 @@ function LayoutContent({ children }) {
 
       setNotifications(newNotifications);
       setUnreadCount(newUnreadCount);
+      setPrazos(response.data.prazos ?? null);
     } catch (error) {
       console.error("Erro ao buscar notificações:", error);
     }
@@ -726,11 +734,16 @@ function LayoutContent({ children }) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
                     <Bell className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                    {unreadCount > 0 && (
+                    {unreadCount > 0 ? (
                       <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full ring-2 ring-white dark:ring-slate-800">
                         {unreadCount > 9 ? "9+" : unreadCount}
                       </span>
-                    )}
+                    ) : prazos?.atrasados > 0 ? (
+                      <span
+                        className="absolute top-2 right-2 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-800"
+                        title={`${prazos.atrasados} chamado(s) atrasado(s)`}
+                      />
+                    ) : null}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-80 p-0 overflow-hidden border-slate-200 dark:border-slate-700">
@@ -748,6 +761,7 @@ function LayoutContent({ children }) {
                       </button>
                     )}
                   </div>
+                  <FaixaPrazos prazos={prazos} className="border-b border-slate-100 dark:border-slate-700" />
                   <div className="max-h-96 overflow-y-auto">
                     {notifications.length === 0 ? (
                       <div className="p-8 text-center">
@@ -778,6 +792,11 @@ function LayoutContent({ children }) {
                             <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">
                               {notification.data.message || notification.data.ds_descricao || ""}
                             </p>
+                            {notification.data.prazo && (
+                              <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
+                                <CalendarClock className="w-3 h-3 shrink-0" /> Prazo: {notification.data.prazo}
+                              </p>
+                            )}
                             <span className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-semibold">
                               {new Date(notification.created_at).toLocaleDateString()}
                             </span>

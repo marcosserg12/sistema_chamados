@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Chamado;
+use App\Support\PrazoChamado;
 use App\Support\StatusChamado;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -34,9 +35,9 @@ class DashboardAdminController extends Controller
         $emAndamento = Chamado::whereIn('st_status', StatusChamado::GRUPO_EM_ANDAMENTO)->count();
         $resolvidos = Chamado::whereIn('st_status', StatusChamado::GRUPO_RESOLVIDO)->count();
 
-        $atrasados = Chamado::whereIn('st_status', StatusChamado::GRUPO_PENDENTE)
-            ->where('dt_data_chamado', '<', Carbon::now()->subHours(48))
-            ->count();
+        // Atrasado = pendente com o prazo de entrega vencido (PrazoChamado).
+        $atrasados = Chamado::comPrazoAtrasado()->count();
+        $venceHoje = Chamado::comPrazoVencendoHoje()->count();
 
         // 2. Gráficos
 
@@ -95,20 +96,24 @@ class DashboardAdminController extends Controller
             ->get();
 
         // 4. Alertas e Tabela
-        $slaAlerts = Chamado::join('tb_empresa', 'tb_chamados.id_empresa', '=', 'tb_empresa.id_empresa')
-            ->whereIn('tb_chamados.st_status', StatusChamado::GRUPO_PENDENTE)
-            ->where('tb_chamados.dt_data_chamado', '<', Carbon::now()->subHours(48))
-            ->select('tb_chamados.id_chamado as id', 'tb_chamados.ds_titulo as titulo', 'tb_empresa.ds_empresa as empresa', 'tb_chamados.dt_data_chamado')
-            ->orderBy('tb_chamados.dt_data_chamado')
+        // Os mais atrasados primeiro (prazo de entrega mais antigo).
+        $slaAlerts = Chamado::comPrazoAtrasado()
+            ->leftJoin('tb_empresa', 'tb_chamados.id_empresa', '=', 'tb_empresa.id_empresa')
+            ->leftJoin('rl_chamado_usuario as rl', 'tb_chamados.id_chamado', '=', 'rl.id_chamado')
+            ->leftJoin('tb_usuario_laravel as tec', 'rl.id_usuario', '=', 'tec.id_usuario')
+            ->select('tb_chamados.id_chamado as id', 'tb_chamados.ds_titulo as titulo', 'tb_chamados.st_status', 'tb_chamados.dt_prazo', 'tb_empresa.ds_empresa as empresa', 'tec.ds_nome as tecnico')
+            ->orderBy('tb_chamados.dt_prazo')
             ->limit(5)
             ->get()
-            // Usamos a nova função de formatação aqui
             ->map(function ($c) {
                 return [
                     'id' => $c->id,
                     'titulo' => $c->titulo,
                     'empresa' => $c->empresa,
-                    'tempo_atraso' => $this->formatarTempoAberto($c->dt_data_chamado)
+                    'tecnico' => $c->tecnico,
+                    'st_status' => (int) $c->st_status,
+                    'dt_prazo' => $c->dt_prazo?->toDateString(),
+                    'tempo_atraso' => PrazoChamado::descricao($c->dt_prazo, (int) $c->st_status),
                 ];
             });
 
@@ -125,7 +130,8 @@ class DashboardAdminController extends Controller
                 'tec.ds_nome as nome_tecnico',
                 'tec.ds_foto as foto_tecnico',
                 'c.st_status',
-                'c.dt_data_chamado'
+                'c.dt_data_chamado',
+                'c.dt_prazo'
             )
             ->orderBy('c.dt_data_chamado', 'desc')
             ->paginate(10);
@@ -143,7 +149,8 @@ class DashboardAdminController extends Controller
                 'st_code' => $c->st_status,
                 'data' => Carbon::parse($c->dt_data_chamado)->format('d/m/Y H:i'),
                 // Usamos a nova função de formatação aqui também
-                'tempo_aberto_formatado' => $this->formatarTempoAberto($c->dt_data_chamado)
+                'tempo_aberto_formatado' => $this->formatarTempoAberto($c->dt_data_chamado),
+                'dt_prazo' => $c->dt_prazo?->toDateString(),
             ];
         });
 
@@ -153,7 +160,7 @@ class DashboardAdminController extends Controller
                 'emAndamento' => $emAndamento,
                 'resolvidos' => $resolvidos,
                 'atrasados' => $atrasados,
-                // 'slaCompliance' removido daqui
+                'vence_hoje' => $venceHoje,
             ],
             'dailyTrend' => $dailyTrend,
             'porStatus' => $porStatus,

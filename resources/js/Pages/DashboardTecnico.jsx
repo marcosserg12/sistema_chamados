@@ -14,6 +14,7 @@ import {
   Activity, TrendingUp, ArrowRight, User, Timer, Inbox, Tag, BarChart3, Building2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import PrazoBadge from "@/Components/chamados/PrazoBadge";
 import { Avatar, AvatarFallback } from "@/Components/ui/avatar";
 
 export default function DashboardTecnico({
@@ -72,7 +73,7 @@ export default function DashboardTecnico({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiItem title="Meus Ativos" value={kpis.ativos} icon={Clock} color="blue" />
           <KpiItem title="Resolvidos" value={kpis.resolvidos} icon={CheckCircle} color="emerald" />
-          <KpiItem title="Meus Críticos" value={kpis.atrasados} icon={AlertTriangle} color="rose" />
+          <KpiItem title="Meus Atrasados" value={kpis.atrasados} icon={AlertTriangle} color="rose" />
           <KpiItem title="Atendimento Médio" value={`${performance.tempo_medio}h`} icon={Timer} color="amber" />
         </div>
 
@@ -279,12 +280,13 @@ export default function DashboardTecnico({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5">
                         <span className="font-black text-indigo-600 dark:text-indigo-400 text-[10px] uppercase tracking-wider">#{t.id}</span>
-                        <span className={cn(
-                          "px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter",
-                          t.atrasado ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" : "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                        )}>
+                        <span
+                          title="Tempo desde a abertura"
+                          className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                        >
                           {t.tempo_aberto}
                         </span>
+                        <PrazoBadge prazo={t.dt_prazo} status={t.status} size="xs" />
                       </div>
                       <Link href={`/chamados/${t.id}`} className="block">
                         <h4 className="font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">

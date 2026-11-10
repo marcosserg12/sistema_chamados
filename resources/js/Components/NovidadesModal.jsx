@@ -1,18 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { usePage } from "@inertiajs/react";
 import { Button } from "@/Components/ui/button";
-import { Sparkles, X, Volume2, VolumeX, ListChecks, FileText } from "lucide-react";
+import { Sparkles, X, Volume2, VolumeX, ListChecks, CalendarClock, BellRing } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLeitor } from "@/hooks/use-voz";
 
 // Sobe esse número toda vez que houver novidades novas pra anunciar — isso
 // faz o aviso aparecer de novo pra todo mundo, mesmo quem já viu a versão
 // anterior.
-const VERSAO_NOVIDADES = 1;
+const VERSAO_NOVIDADES = 2;
 const CHAVE_LOCALSTORAGE = `novidades_vistas_v${VERSAO_NOVIDADES}`;
 
-// Perfis com acesso ao Relatório Semanal (mesma regra do backend).
-const PERFIS_RELATORIO = [1, 4, 5];
+// Perfis da equipe técnica (assumem chamados e definem prazo).
+const PERFIS_EQUIPE = [1, 4, 5];
 
 export default function NovidadesModal() {
   const { auth } = usePage().props;
@@ -27,22 +27,38 @@ export default function NovidadesModal() {
     }
   }, [auth?.user?.id_usuario]);
 
-  const temRelatorio = PERFIS_RELATORIO.includes(auth?.user?.id_perfil);
+  const ehEquipe = PERFIS_EQUIPE.includes(auth?.user?.id_perfil);
 
-  const itens = [
-    {
-      titulo: "Abertura de chamado assistida por IA",
-      descricao: "No Novo Chamado, use o botão \"Abrir com IA\": conte o problema com suas palavras (ou fale, tem ditado por voz) e a IA preenche o chamado pra você, perguntando o que faltar.",
-    },
-    {
-      titulo: "Novos status de chamado",
-      descricao: "Além de Aberto, Em Andamento e Resolvido, agora dá pra marcar Aguardando Teste do Usuário, Pausado/Aguardando Peça e Cancelado.",
-    },
-    ...(temRelatorio ? [{
-      titulo: "Relatório Semanal",
-      descricao: "Um resumo em PDF de tudo que aconteceu na semana, pra usar na reunião de terça — disponível no menu.",
-    }] : []),
-  ];
+  const itens = ehEquipe
+    ? [
+        {
+          icone: CalendarClock,
+          titulo: "Prazo de entrega obrigatório",
+          descricao: "Ao assumir um chamado (ou atribuí-lo a alguém), informe até quando ele será entregue. Para mudar o prazo depois, só com justificativa: ela fica no histórico e o solicitante é avisado.",
+        },
+        {
+          icone: BellRing,
+          titulo: "Lembretes de prazo",
+          descricao: "De segunda a sexta, às 8h, você recebe um resumo dos seus chamados Em Andamento que vencem no dia ou estão atrasados — todo dia, até finalizar ou mudar o prazo.",
+        },
+        {
+          icone: ListChecks,
+          titulo: "Prazo em todas as telas",
+          descricao: "O prazo aparece na lista de chamados (com filtro de atrasados), no quadro, nos painéis e nas mensagens. No sino, uma faixa mostra os chamados atrasados.",
+        },
+      ]
+    : [
+        {
+          icone: CalendarClock,
+          titulo: "Prazo de entrega nos seus chamados",
+          descricao: "Quando um técnico assumir o seu chamado, ele informa até quando vai entregar. Você recebe esse prazo e é avisado, com a justificativa, se ele mudar.",
+        },
+        {
+          icone: BellRing,
+          titulo: "Lembretes de prazo",
+          descricao: "Você é avisado no dia em que o prazo vence. Se o chamado estiver aguardando o seu teste (ou pausado) e o prazo passar, chega um lembrete por dia útil.",
+        },
+      ];
 
   const fechar = () => {
     localStorage.setItem(CHAVE_LOCALSTORAGE, "true");
@@ -84,11 +100,7 @@ export default function NovidadesModal() {
                 {itens.map((item, i) => (
                   <div key={i} className="flex gap-3 items-start">
                     <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center shrink-0 mt-0.5">
-                      {item.titulo.includes("Relatório") ? (
-                        <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                      ) : (
-                        <ListChecks className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                      )}
+                      {React.createElement(item.icone ?? ListChecks, { className: "w-4 h-4 text-indigo-600 dark:text-indigo-400" })}
                     </div>
                     <div>
                       <p className="font-bold text-slate-800 dark:text-slate-100 text-sm">{item.titulo}</p>

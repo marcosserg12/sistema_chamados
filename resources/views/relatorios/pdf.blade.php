@@ -98,7 +98,7 @@
     <table class="dados">
         <thead>
             <tr>
-                <th>ID</th><th>Título</th><th>Tipo</th><th>Motivo</th><th>Detalhe</th><th>Solicitação</th><th>Técnico</th><th>Status</th><th>Categoria</th><th>Data</th>
+                <th>ID</th><th>Título</th><th>Tipo</th><th>Motivo</th><th>Detalhe</th><th>Solicitação</th><th>Técnico</th><th>Status</th><th>Prazo</th><th>Categoria</th><th>Data</th>
             </tr>
         </thead>
         <tbody>
@@ -123,11 +123,12 @@
                         };
                     @endphp
                     <td class="{{ $statusClasse }}">{{ $linha['status'] }}</td>
+                    <td>{{ $linha['prazo'] ?? '-' }}</td>
                     <td>{{ $linha['categoria'] }}</td>
                     <td>{{ $linha['data_referencia'] }}</td>
                 </tr>
             @empty
-                <tr><td colspan="10">Nenhum chamado neste período.</td></tr>
+                <tr><td colspan="11">Nenhum chamado neste período.</td></tr>
             @endforelse
         </tbody>
     </table>

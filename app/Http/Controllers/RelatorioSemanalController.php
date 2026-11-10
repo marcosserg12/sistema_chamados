@@ -195,6 +195,8 @@ class RelatorioSemanalController extends Controller
                 'st_status' => (int) $c->st_status,
                 'categoria' => $categoria,
                 'data_referencia' => $dataReferencia,
+                'dt_prazo' => $c->dt_prazo?->toDateString(),
+                'prazo' => \App\Support\PrazoChamado::texto($c->dt_prazo, (int) $c->st_status),
             ];
         });
 

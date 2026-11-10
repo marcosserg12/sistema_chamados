@@ -69,6 +69,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/chamados/{id}', [ChamadoController::class, 'show'])->name('chamados.show');
     Route::put('/chamados/{id}', [ChamadoController::class, 'update'])->name('chamados.update');
     Route::post('/chamados/{id}/historico', [ChamadoController::class, 'storeComment'])->name('chamados.comment');
+    Route::post('/chamados/{id}/prazo', [ChamadoController::class, 'alterarPrazo'])->name('chamados.prazo');
     Route::post('/chamados/{id}/chat', [ChamadoController::class, 'storeChatMessage'])->name('chamados.chat');
     Route::post('/chamados/{id}/chat', [ChamadoController::class, 'storeChatMessage'])->name('chamados.chat');
     Route::get('/api/chamados/{id}/chat', [ChamadoController::class, 'getChatMessages'])->name('api.chamados.chat');
@@ -85,7 +86,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/board', [KanbanController::class, 'index'])->name('kanban.index');
     Route::put('/api/kanban/move', [KanbanController::class, 'move'])->name('api.kanban.move');
     Route::get('/api/kanban/chamado/{id}', [ChamadoController::class, 'getModalDetails']);
-    Route::post('/api/kanban/chamado/{id}/previsao', [ChamadoController::class, 'updatePrevisao']);
     Route::get('/api/kanban/chamado/{id}/checklist', [ChamadoChecklistController::class, 'index']);
     Route::post('/api/kanban/chamado/{id}/checklist', [ChamadoChecklistController::class, 'store']);
     Route::post('/api/kanban/checklist/{id}/toggle', [ChamadoChecklistController::class, 'toggle']);

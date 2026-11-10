@@ -16,6 +16,7 @@ use App\Models\Localizacao;
 use App\Models\MotivoPrincipal;
 use App\Models\MotivoAssociado;
 use App\Models\ChatChamado;
+use App\Models\HistoricoPrazoChamado;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -40,7 +41,7 @@ class ChamadoController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $filters = $request->only(['search', 'status', 'tecnico', 'localizacao', 'solicitante']);
+        $filters = $request->only(['search', 'status', 'tecnico', 'localizacao', 'solicitante', 'prazo']);
 
         // 1. Dados para os Selects
         $tecnicos = Usuario::where('id_perfil', 4)
@@ -75,6 +76,7 @@ class ChamadoController extends Controller
                 'tb_chamados.ds_titulo',
                 'tb_chamados.st_status',
                 'tb_chamados.dt_data_chamado',
+                'tb_chamados.dt_prazo',
                 'u_solic.ds_nome as ds_nome_solicitante',
                 'l.ds_localizacao',
                 'u_tec.ds_nome as ds_nome_tecnico',
@@ -86,14 +88,15 @@ class ChamadoController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // 3. Estatísticas (Reaproveitando a lógica de visibilidade e filtros, exceto status)
-        $filtersStats = array_merge($filters, ['status' => 'todos']);
+        // 3. Estatísticas (Reaproveitando a lógica de visibilidade e filtros, exceto status e prazo)
+        $filtersStats = array_merge($filters, ['status' => 'todos', 'prazo' => 'todos']);
         $statsBase = Chamado::visivelPara($user)->filtrar($filtersStats);
         
         $stats = [
             'abertos' => (clone $statsBase)->whereIn('st_status', \App\Support\StatusChamado::GRUPO_ABERTO)->count(),
             'em_andamento' => (clone $statsBase)->whereIn('st_status', \App\Support\StatusChamado::GRUPO_EM_ANDAMENTO)->count(),
             'resolvidos' => (clone $statsBase)->whereIn('st_status', \App\Support\StatusChamado::GRUPO_RESOLVIDO)->count(),
+            'atrasados' => (clone $statsBase)->comPrazoAtrasado()->count(),
         ];
 
         return Inertia::render('Chamados', [
@@ -103,7 +106,7 @@ class ChamadoController extends Controller
             'localizacoes' => $localizacoes,
             'stats' => $stats,
             'filters' => array_merge([
-                'search' => '', 'status' => 'todos', 'tecnico' => 'todos', 'localizacao' => 'todos', 'solicitante' => 'todos'
+                'search' => '', 'status' => 'todos', 'tecnico' => 'todos', 'localizacao' => 'todos', 'solicitante' => 'todos', 'prazo' => 'todos'
             ], $filters)
         ]);
     }
@@ -180,6 +183,7 @@ class ChamadoController extends Controller
             'id_tecnico' => $chamado->tecnico->id_usuario ?? null,
             'ds_nome_tecnico' => $chamado->tecnico->ds_nome ?? null,
             'ds_foto_tecnico' => $chamado->tecnico->ds_foto ?? null,
+            'pode_alterar_prazo' => $this->chamadoService->podeAlterarPrazo($chamado, $user),
             'anexos' => $chamado->anexos->map(fn($arq) => [
                 'id' => $arq->id_arquivo,
                 'name' => basename($arq->ds_caminho_arquivo),
@@ -226,24 +230,38 @@ class ChamadoController extends Controller
 
         return response()->json([
             'chamado' => $chamado,
+            'pode_alterar_prazo' => $this->chamadoService->podeAlterarPrazo($chamado, auth()->user()),
             'comentarios' => $comentarios,
             'checklist' => $checklist
         ]);
     }
 
-    public function updatePrevisao(Request $request, $id)
+    /**
+     * Define (chamado antigo sem prazo) ou altera o prazo de entrega.
+     * Alterar um prazo existente exige justificativa — regras no ChamadoService.
+     */
+    public function alterarPrazo(Request $request, $id)
     {
-        $user = auth()->user();
-        if (!in_array($user->id_perfil, [1, 4, 5])) {
-            abort(403);
+        $dados = $request->validate([
+            'dt_prazo' => 'required|date_format:Y-m-d',
+            'ds_justificativa' => 'nullable|string|max:1000',
+        ], [
+            'dt_prazo.required' => 'Informe a nova data do prazo.',
+            'dt_prazo.date_format' => 'Data de prazo inválida.',
+        ]);
+
+        $chamado = Chamado::visivelPara(auth()->user())->findOrFail($id);
+
+        $this->chamadoService->alterarPrazo($chamado, $dados['dt_prazo'], auth()->user(), $dados['ds_justificativa'] ?? null);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'dt_prazo' => $chamado->fresh()->dt_prazo?->toDateString(),
+            ]);
         }
 
-        $request->validate(['dt_previsao_termino' => 'nullable|date']);
-        $chamado = Chamado::findOrFail($id);
-        $chamado->dt_previsao_termino = $request->dt_previsao_termino;
-        $chamado->save();
-
-        return response()->json(['success' => true]);
+        return redirect()->back();
     }
 
     /**
@@ -260,14 +278,19 @@ class ChamadoController extends Controller
 
         $chamado = Chamado::findOrFail($id);
 
+        // Prazo de entrega: obrigatório quando a ação faz alguém assumir o
+        // chamado (o ChamadoService recusa se faltar).
+        $request->validate(['dt_prazo' => 'nullable|date_format:Y-m-d'], ['dt_prazo.date_format' => 'Data de prazo inválida.']);
+        $prazo = $request->input('dt_prazo');
+
         // 1. Mudança de Status
         if ($request->has('st_status')) {
-            $this->chamadoService->atualizarStatus($chamado, (int)$request->st_status, $user);
+            $this->chamadoService->atualizarStatus($chamado, (int)$request->st_status, $user, $prazo);
         }
 
         // 2. Atribuição de Técnico
         if ($request->has('id_tecnico')) {
-            $this->chamadoService->atribuirTecnico($chamado, (int)$request->id_tecnico, $user);
+            $this->chamadoService->atribuirTecnico($chamado, (int)$request->id_tecnico, $user, true, $prazo);
         }
 
         // 3. Edição de Dados
@@ -346,7 +369,21 @@ class ChamadoController extends Controller
             ->where('id_chamado', $id)->select('u.ds_nome as ds_nome_usuario', 'u.ds_foto as ds_foto_usuario', 'tb_historico_edicao.dt_update as dt_insert',
                 DB::raw("'Chamado editado (campos principais atualizados)' as ds_historico"));
 
-        return $histStatus->union($histUsuario)->union($histComentarios)->union($histEdicao)->orderBy('dt_insert', 'desc')->get();
+        $historico = $histStatus->union($histUsuario)->union($histComentarios)->union($histEdicao)->orderBy('dt_insert', 'desc')->get();
+
+        // Mudanças de prazo: montadas em PHP (e não no UNION) para não esbarrar
+        // em collation diferente entre a tabela nova e as antigas.
+        $histPrazo = HistoricoPrazoChamado::with('usuario:id_usuario,ds_nome,ds_foto')
+            ->where('id_chamado', $id)
+            ->get()
+            ->map(fn ($h) => (object) [
+                'ds_nome_usuario' => $h->usuario->ds_nome ?? 'Sistema',
+                'ds_foto_usuario' => $h->usuario->ds_foto ?? null,
+                'dt_insert' => $h->dt_update?->format('Y-m-d H:i:s'),
+                'ds_historico' => $h->descricao(),
+            ]);
+
+        return $historico->toBase()->concat($histPrazo)->sortByDesc('dt_insert')->values();
     }
 
     private function dispararNotificacaoComentario($chamado, $user, $comentario)
@@ -355,7 +392,7 @@ class ChamadoController extends Controller
 
         $notification = new \App\Notifications\NovoComentario($chamado, $user, $comentario);
         $whatsapp = app(\App\Services\EvolutionService::class);
-        $msg = "💬 *NOVA OBSERVAÇÃO*\n\n📦 *Chamado:* #{$chamado->id_chamado}\n👤 *Enviado por:* {$user->ds_nome}\n\n🔗 *Confira em:* " . config('app.url') . "/chamados/{$chamado->id_chamado}";
+        $msg = "💬 *NOVA OBSERVAÇÃO*\n\n📦 *Chamado:* #{$chamado->id_chamado}\n👤 *Enviado por:* {$user->ds_nome}\n" . $this->chamadoService->linhaPrazo($chamado) . "\n\n🔗 *Confira em:* " . config('app.url') . "/chamados/{$chamado->id_chamado}";
 
         if ($chamado->id_usuario != $user->id_usuario) {
             $dono = \App\Models\User::find($chamado->id_usuario);
@@ -428,7 +465,8 @@ class ChamadoController extends Controller
         $msgWhatsAppChat = "✉️ *NOVA MENSAGEM NO CHAT*\n\n".
                            "📦 *Chamado:* #{$chamado->id_chamado}\n".
                            "👤 *De:* {$user->ds_nome}\n".
-                           "💬 *Mensagem:* {$resumoChat}\n\n".
+                           "💬 *Mensagem:* {$resumoChat}\n".
+                           $this->chamadoService->linhaPrazo($chamado) . "\n\n".
                            "🔗 *Responda em:* " . config('app.url') . "/chamados/{$chamado->id_chamado}";
         
         // Se quem enviou foi o técnico, notifica o dono

@@ -51,9 +51,10 @@ import {
   CheckCheck,
   File as FileIcon,
   Mic,
-  MicOff
+  MicOff,
+  CalendarClock
 } from "lucide-react";
-import { format, formatDistanceToNow, isPast } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import Swal from "sweetalert2";
@@ -61,6 +62,9 @@ import axios from "axios";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { STATUS, STATUS_LIST, STATUS_SECUNDARIOS, getStatusLabel } from "@/lib/statusChamado";
+import { PRAZO, STATUS_COM_PRAZO, exigePrazo, formatPrazo, getPrazoDescricao, getPrazoSituacao, getPrazoTexto } from "@/lib/prazoChamado";
+import PrazoBadge from "@/Components/chamados/PrazoBadge";
+import PrazoDialog from "@/Components/chamados/PrazoDialog";
 import { useGravadorAudio } from "@/hooks/use-voz";
 
 export default function ChamadoDetalhes({ chamado, historico = [], chat = [], tecnicos = [], empresas = [], tiposChamado = [] }) {
@@ -68,6 +72,11 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
   const [loading, setLoading] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // Janela de prazo: "assumir" (status/atribuição que exige prazo), "definir"
+  // (chamado antigo sem prazo) ou "alterar" (com justificativa).
+  const [prazoDialog, setPrazoDialog] = useState({ open: false, modo: "assumir", acao: null, erro: null });
+  const [prazoProcessando, setPrazoProcessando] = useState(false);
 
   // --- LÓGICA DE CHAT EM TEMPO REAL (Polling) ---
   const [currentChat, setCurrentChat] = useState(chat);
@@ -412,6 +421,11 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
   const getLogConfig = (text) => {
     if (!text) return { type: 'comentario', icon: null };
 
+    // Mudanças de prazo de entrega
+    if (text.startsWith("Prazo de entrega")) {
+      return { type: 'prazo', icon: CalendarClock, color: 'text-rose-500', bg: 'bg-rose-100 dark:bg-rose-500/10 border-rose-200 dark:border-rose-900' };
+    }
+
     // Se for Status alterado
     if (text.includes("Status alterado")) {
       return { type: 'status', icon: RefreshCw, color: 'text-sky-500', bg: 'bg-sky-100 dark:bg-sky-500/10 border-sky-200 dark:border-sky-900' };
@@ -431,19 +445,6 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
     return { type: 'comentario', icon: null };
   };
 
-  const getSlaStatus = () => {
-    if (!chamado?.dt_prazo_sla) return null;
-    if ([STATUS.RESOLVIDO, STATUS.CANCELADO].includes(Number(chamado.st_status))) return "ok";
-
-    const prazo = new Date(chamado.dt_prazo_sla);
-    const now = new Date();
-
-    if (isPast(prazo)) return "atrasado";
-    const diffHours = (prazo - now) / (1000 * 60 * 60);
-    if (diffHours <= 4) return "urgente";
-    return "ok";
-  };
-  const slaStatus = getSlaStatus();
 
   const getGrauLabel = (grau) => {
     if (String(grau) === '1') return "Melhoria";
@@ -463,21 +464,58 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
   // AÇÕES DO SISTEMA
   // =========================================================================
 
+  const primeiroErro = (errors) => Object.values(errors || {})[0] || null;
+
   const handleUpdate = (data) => {
     setLoading(true);
     router.put(`/chamados/${chamado.id_chamado}`, data, {
+      preserveScroll: true,
       onSuccess: () => {
         toast.success("Chamado atualizado com sucesso!");
         setLoading(false);
       },
-      onError: () => {
-        toast.error("Erro ao atualizar chamado.");
+      onError: (errors) => {
+        toast.error(primeiroErro(errors) || "Erro ao atualizar chamado.");
         setLoading(false);
       }
     });
   };
 
+  // Assumir/atribuir um chamado sem técnico exige prazo: abre a janela em vez de salvar direto.
+  const abrirPrazoAssumir = (acao) => setPrazoDialog({ open: true, modo: "assumir", acao, erro: null });
+  const abrirPrazoAlterar = () => setPrazoDialog({ open: true, modo: chamado.dt_prazo ? "alterar" : "definir", acao: null, erro: null });
+
+  const confirmarPrazo = ({ dt_prazo, ds_justificativa }) => {
+    const { modo, acao } = prazoDialog;
+    const opcoes = {
+      preserveScroll: true,
+      onSuccess: () => {
+        toast.success(
+          modo === "assumir"
+            ? `Chamado assumido com prazo até ${formatPrazo(dt_prazo)}.`
+            : `Prazo de entrega ${modo === "alterar" ? "alterado" : "definido"}: ${formatPrazo(dt_prazo)}.`
+        );
+        setPrazoDialog((p) => ({ ...p, open: false }));
+      },
+      onError: (errors) => setPrazoDialog((p) => ({ ...p, erro: primeiroErro(errors) || "Não foi possível salvar o prazo." })),
+      onFinish: () => setPrazoProcessando(false),
+    };
+
+    setPrazoProcessando(true);
+    if (modo === "assumir") {
+      const payload = acao?.tipo === "tecnico" ? { id_tecnico: acao.valor, dt_prazo } : { st_status: acao?.valor, dt_prazo };
+      router.put(`/chamados/${chamado.id_chamado}`, payload, opcoes);
+    } else {
+      router.post(`/chamados/${chamado.id_chamado}/prazo`, { dt_prazo, ds_justificativa }, opcoes);
+    }
+  };
+
   const confirmStatusChange = (statusValue, statusName) => {
+    if (exigePrazo(chamado.st_status, statusValue)) {
+      abrirPrazoAssumir({ tipo: "status", valor: statusValue, rotulo: statusName });
+      return;
+    }
+
     Swal.fire({
       title: "Tem certeza?",
       text: `Deseja mudar o status deste chamado para "${statusName}"?`,
@@ -511,6 +549,28 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
   return (
     <AppLayout>
       <Head title={`Chamado #${chamado.id_chamado}`} />
+
+      <PrazoDialog
+        open={prazoDialog.open}
+        onOpenChange={(open) => setPrazoDialog((p) => ({ ...p, open, erro: null }))}
+        modo={prazoDialog.modo}
+        prazoAtual={chamado.dt_prazo}
+        processing={prazoProcessando}
+        erro={prazoDialog.erro}
+        onConfirmar={confirmarPrazo}
+        titulo={
+          prazoDialog.modo === "assumir"
+            ? prazoDialog.acao?.tipo === "tecnico"
+              ? `Atribuir a ${prazoDialog.acao?.rotulo ?? "técnico"}`
+              : `Mudar para "${prazoDialog.acao?.rotulo ?? ""}"`
+            : undefined
+        }
+        descricao={
+          prazoDialog.modo === "assumir"
+            ? "Para assumir o chamado é obrigatório informar o prazo de entrega. O solicitante recebe esse prazo."
+            : undefined
+        }
+      />
 
       <div className="max-w-7xl mx-auto space-y-6 pb-12">
 
@@ -553,22 +613,7 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
             </div>
           </div>
 
-          {slaStatus && slaStatus !== "ok" && (
-            <div className={cn(
-              "flex items-center gap-3 px-5 py-4 rounded-xl border-l-4 shadow-sm shrink-0 h-fit",
-              slaStatus === "atrasado"
-                ? "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border-rose-500"
-                : "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-500"
-            )}>
-              <AlertTriangle className="w-6 h-6 shrink-0" />
-              <div className="flex flex-col">
-                <span className="text-sm font-extrabold uppercase tracking-wider">
-                  {slaStatus === "atrasado" ? "SLA Ultrapassado" : "Atenção ao SLA"}
-                </span>
-                <span className="text-xs font-medium opacity-80">Prioridade de atendimento</span>
-              </div>
-            </div>
-          )}
+          <PrazoDestaque chamado={chamado} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -687,6 +732,34 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
                       </div>
                     </div>
 
+                    {/* Prazo de entrega */}
+                    <div className="space-y-2 lg:space-y-3">
+                      <label className="text-[9px] lg:text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                        <div className="w-1 h-1 rounded-full bg-rose-500" /> Prazo de entrega
+                      </label>
+                      <div className="flex items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 rounded-xl lg:rounded-2xl px-3 py-2 lg:py-3">
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <PrazoBadge prazo={chamado.dt_prazo} status={chamado.st_status} size="md" className="self-start" />
+                          {chamado.dt_prazo && (
+                            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{formatPrazo(chamado.dt_prazo)}</span>
+                          )}
+                        </div>
+                        {chamado.pode_alterar_prazo && STATUS_COM_PRAZO.includes(Number(chamado.st_status)) && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={abrirPrazoAlterar}
+                            disabled={loading}
+                            className="h-8 shrink-0 gap-1.5 text-xs font-bold border-slate-200 dark:border-slate-700"
+                          >
+                            <CalendarClock className="w-3.5 h-3.5" />
+                            {chamado.dt_prazo ? "Alterar" : "Definir"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Alterar Técnico (Mais compacto no mobile) */}
                     <div className="space-y-2 lg:space-y-3 pb-2 lg:pb-0">
                       <label className="text-[9px] lg:text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -694,7 +767,14 @@ export default function ChamadoDetalhes({ chamado, historico = [], chat = [], te
                       </label>
                       <Select
                         value={chamado.id_tecnico ? String(chamado.id_tecnico) : undefined}
-                        onValueChange={(v) => handleUpdate({ id_tecnico: v })}
+                        onValueChange={(v) => {
+                          if (Number(chamado.st_status) === STATUS.ABERTO) {
+                            const tecnico = tecnicos.find((t) => String(t.id_usuario) === String(v));
+                            abrirPrazoAssumir({ tipo: "tecnico", valor: v, rotulo: tecnico?.ds_nome });
+                          } else {
+                            handleUpdate({ id_tecnico: v });
+                          }
+                        }}
                         disabled={loading}
                       >
                         <SelectTrigger className="w-full bg-slate-50 dark:bg-slate-800/80 h-10 lg:h-14 border-slate-200 dark:border-slate-700 font-bold text-slate-700 dark:text-slate-200 rounded-xl lg:rounded-2xl border-2 px-3 lg:px-4 text-xs lg:text-sm">
@@ -1485,7 +1565,57 @@ function InfoCard({ chamado, getInitials }) {
             </span>
           </div>
         </div>
+
+        {/* PRAZO DE ENTREGA */}
+        <div className="flex gap-4 items-center">
+          <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-500/10 flex items-center justify-center shrink-0 shadow-inner">
+            <CalendarClock className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Prazo de Entrega</span>
+            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{getPrazoTexto(chamado.dt_prazo, chamado.st_status)}</span>
+          </div>
+        </div>
       </CardContent>
     </Card>
+  );
+}
+
+// Caixa de prazo de entrega no cabeçalho do chamado.
+function PrazoDestaque({ chamado }) {
+  const situacao = getPrazoSituacao(chamado.dt_prazo, chamado.st_status);
+  if (situacao === PRAZO.ENCERRADO && !chamado.dt_prazo) return null;
+
+  const estilos = {
+    [PRAZO.ATRASADO]: "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border-rose-500",
+    [PRAZO.VENCE_HOJE]: "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-500",
+    [PRAZO.NO_PRAZO]: "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border-indigo-500",
+    [PRAZO.SEM_PRAZO]: "bg-slate-50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 border-slate-400 border-dashed",
+    [PRAZO.A_DEFINIR]: "bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-slate-300",
+    [PRAZO.ENCERRADO]: "bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-slate-300",
+  };
+
+  const principal = {
+    [PRAZO.A_DEFINIR]: "A definir",
+    [PRAZO.SEM_PRAZO]: "Sem prazo",
+  }[situacao] ?? formatPrazo(chamado.dt_prazo);
+
+  const detalhe = {
+    [PRAZO.A_DEFINIR]: "Definido quando um técnico assumir",
+    [PRAZO.SEM_PRAZO]: "Chamado anterior aos prazos",
+    [PRAZO.ENCERRADO]: "Chamado encerrado",
+  }[situacao] ?? getPrazoDescricao(chamado.dt_prazo, chamado.st_status);
+
+  const Icone = situacao === PRAZO.ATRASADO ? AlertTriangle : CalendarClock;
+
+  return (
+    <div className={cn("flex items-center gap-3 px-5 py-4 rounded-xl border-l-4 shadow-sm shrink-0 h-fit", estilos[situacao])}>
+      <Icone className="w-6 h-6 shrink-0" />
+      <div className="flex flex-col">
+        <span className="text-[10px] font-extrabold uppercase tracking-wider opacity-80">Prazo de entrega</span>
+        <span className="text-base font-black leading-tight">{principal}</span>
+        {detalhe && <span className="text-xs font-semibold opacity-90 first-letter:uppercase">{detalhe}</span>}
+      </div>
+    </div>
   );
 }
